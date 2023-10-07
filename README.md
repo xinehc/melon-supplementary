@@ -321,6 +321,7 @@ Annotating against the full KEGG profile HMMs will take days, so we first use a 
 
 ```bash
 mkdir -p prot/out/prokaryote.subset
+
 for file in proteins/*.fa
 do
     filename=${file%.fa}
@@ -419,6 +420,7 @@ rm -rf prot/out/env_nr.full.*
 Rerun `hmmsearch` but this time with the full set of prokaryotic profile HMMs. 
 ```bash
 mkdir -p prot/out/prokaryote.full
+
 for file in prot/out/*.fa
 do
     filename=${file%.fa}
@@ -437,6 +439,7 @@ done
 Parse domain output files of `hmmsearch`, select only sequences that pass the pre-defined threshold.
 ```bash
 mkdir -p prot/seq
+
 python -c "
 import glob
 import pandas as pd
@@ -734,7 +737,7 @@ ls nucl/raw/*.fa | sort | xargs -P 64 -i bash -c '
 
 Combine all clustered files to get the nucleotide database.
 ```bash
-find nucl/clustered -name *rep_seq.fasta -exec cat {} \; > nucl/nucl_b.fa
+find nucl/clustered/*rep_seq.fasta -exec cat {} \; > nucl/nucl_b.fa
 cat nucl/nucl_a.fa nucl/nucl_b.fa | seqkit sort | seqkit shuffle -s 0 > nucl/nucl.fa
 
 python -c "

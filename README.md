@@ -43,7 +43,7 @@ do
     curl ftp://ftp.ncbi.nlm.nih.gov/blast/db/ \
         | grep '[^ ]*.gz$' -o \
         | grep ^$folder \
-        | xargs -P 64 -i wget -q --show-progress https://ftp.ncbi.nlm.nih.gov/blast/db/{}
+        | xargs -P 64 -I {} wget -q --show-progress https://ftp.ncbi.nlm.nih.gov/blast/db/{}
 
     ## decompress all files
     for file in *.tar.gz; do tar -xvf $file; done
@@ -115,8 +115,8 @@ with open('prokaryote.subset.id', 'w') as w:
 
 ## copy profiles to a directory
 mkdir -p prokaryote.full prokaryote.subset
-cut prokaryote.subset.id -f 1 | uniq | xargs -P 64 -i cp profiles/{}.hmm prokaryote.subset/{}.hmm
-cut profiles/prokaryote.hal -f 1 | uniq | xargs -P 64 -i cp profiles/{} prokaryote.full/{}
+cut prokaryote.subset.id -f 1 | uniq | xargs -P 64 -I {} cp profiles/{}.hmm prokaryote.subset/{}.hmm
+cut profiles/prokaryote.hal -f 1 | uniq | xargs -P 64 -I {} cp profiles/{} prokaryote.full/{}
 cd ..
 ```
 
@@ -242,7 +242,7 @@ for kingdom in ['archaea', 'bacteria']:
 ```bash
 ## download assemblies then cat
 cd fna
-find *.id | xargs -P 64 -i bash -c '
+find *.id | xargs -P 64 -I {} bash -c '
     wget -i ${1} -q --show-progress -P ${1%.id}; \
     find ${1%.id} -name "*.fna.gz" | xargs cat > ${1%.id}.fna.gz' - {}
 cd ..
@@ -328,7 +328,7 @@ do
     filename=${filename##*/}
 
     ls kegg/prokaryote.subset \
-    | xargs -P 8 -i hmmsearch \
+    | xargs -P 8 -I {} hmmsearch \
         --domtblout prot/out/prokaryote.subset/$filename.{} \
         -E 2147483647 --domE 2147483647 \
         --noali \
@@ -427,7 +427,7 @@ do
     filename=${filename##*/}
 
     ls kegg/prokaryote.full \
-    | xargs -P 64 -i hmmsearch \
+    | xargs -P 64 -I {} hmmsearch \
         --domtblout prot/out/prokaryote.full/$filename.{} \
         -E 2147483647 --domE 2147483647 \
         --noali \
@@ -537,7 +537,7 @@ for key, val in sequence.items():
 ```bash
 mkdir -p prot/clustered
 
-ls prot/raw/*.fa | sort | xargs -P 8 -i bash -c '
+ls prot/raw/*.fa | sort | xargs -P 8 -I {} bash -c '
     filename=${1%.fa*}; \
     filename=${filename##*/}; \
     echo $filename; \
@@ -590,7 +590,7 @@ for key, val in accession.items():
 ```bash
 mkdir -p nucl/out
 
-ls assemblies/fna/*.fna.gz | sort | xargs -P 8 -i bash -c '
+ls assemblies/fna/*.fna.gz | sort | xargs -P 8 -I {} bash -c '
     filename=${1%.fna*}; \
     filename=${filename##*/}; \
     echo $filename; \
@@ -626,7 +626,7 @@ from collections import defaultdict
 from tqdm.contrib.concurrent import process_map
 
 def sort_coordinate(start, end):
-    return (start-1, end, '+') if start < end else (end-1, start, '-')
+    return (start - 1, end, '+') if start < end else (end - 1, start, '-')
 
 def compute_overlap(coordinates):
     qstart, qend, sstart, send = coordinates
@@ -725,7 +725,7 @@ pd.DataFrame([
 ```bash
 mkdir -p nucl/clustered
 
-ls nucl/raw/*.fa | sort | xargs -P 64 -i bash -c '
+ls nucl/raw/*.fa | sort | xargs -P 64 -I {} bash -c '
     filename=${1%.fa*}; \
     filename=${filename##*/}; \
     echo $filename; \

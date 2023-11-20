@@ -93,9 +93,9 @@ tar -xvf profiles.tar.gz
 ## collect ribosomal protein ko
 python -c "
 import requests
-from collections import defaultdict
+
 ## https://www.genome.jp/kegg-bin/get_htext#A1
-response  = requests.get('https://www.genome.jp/kegg-bin/download_htext?htext=ko03011.keg&format=htext&filedir=')
+response = requests.get('https://www.genome.jp/kegg-bin/download_htext?htext=ko03011.keg&format=htext&filedir=')
 
 ## https://www.genome.jp/kegg/annotation/br01610.html
 with open('prokaryote.subset.id', 'w') as w:
@@ -108,7 +108,7 @@ with open('prokaryote.subset.id', 'w') as w:
                 else:
                     kingdom = None
 
-            if ls[0]=='D' and kingdom is not None:
+            if ls[0] == 'D' and kingdom is not None:
                 if ls[1] not in {'K19032', 'K19033'}: # skip these two not in <Ribosomal protein gene clusters in prokaryotes>
                     w.write(ls[1] + '\t' + kingdom + '\n')
 "
@@ -135,6 +135,7 @@ python -c "
 import pandas as pd
 import subprocess
 
+
 def get_taxonomy(taxid):
     output = subprocess.run([
         'taxonkit', 'reformat',
@@ -155,8 +156,9 @@ def get_taxonomy(taxid):
 
     return taxonomy
 
+
 ## read assemblies
-assembly = pd.read_table('assembly_summary_refseq.txt', skiprows=1, low_memory=False).rename({'#assembly_accession':'assembly'}, axis=1)
+assembly = pd.read_table('assembly_summary_refseq.txt', skiprows=1, low_memory=False).rename({'#assembly_accession': 'assembly'}, axis=1)
 assembly = assembly[(assembly.group.isin(['archaea', 'bacteria'])) & ((assembly['ftp_path'] != 'na'))]
 
 ## drop unknown species
@@ -171,7 +173,7 @@ assembly[['assembly', 'taxonomy', 'index']].to_csv('assembly2species.tsv', sep='
 assembly['fna'] = assembly['ftp_path'] + '/' + assembly['ftp_path'].str.split('/').str.get(-1) + '_genomic.fna.gz'
 
 for kingdom in ['archaea', 'bacteria']:
-    fna = assembly[assembly['group']==kingdom]['fna'].to_list()
+    fna = assembly[assembly['group'] == kingdom]['fna'].to_list()
     n = 8 if kingdom == 'archaea' else 256 # split into 8 or 256 chunks so that each contains same number of genomes
     chunks = [fna[i::n] for i in range(n)]
 
@@ -206,7 +208,7 @@ ncbi = pd.concat([
     pd.read_table('assembly_summary_refseq_historical.txt', skiprows=1, low_memory=False),
     pd.read_table('assembly_summary_genbank.txt', skiprows=1, low_memory=False),
     pd.read_table('assembly_summary_genbank_historical.txt', skiprows=1, low_memory=False),
-]).rename({'#assembly_accession':'assembly'}, axis=1)
+]).rename({'#assembly_accession': 'assembly'}, axis=1)
 
 gtdb = pd.concat([
     pd.read_table('ar53_metadata_r214.tsv'),
@@ -216,7 +218,7 @@ gtdb['assembly'] = gtdb.accession.str.split('_', n=1).str.get(-1)
 
 ## some may no longer be available
 assembly = pd.merge(gtdb, ncbi[['assembly', 'ftp_path']], how='left', on='assembly')
-assembly = assembly[(assembly.ftp_path!='na') & (assembly.ftp_path.notnull())]
+assembly = assembly[(assembly.ftp_path != 'na') & (assembly.ftp_path.notnull())]
 assembly['taxonomy'] = assembly['gtdb_taxonomy'].str.replace('[a-z]__', '', regex=True)
 assembly['group'] = assembly['taxonomy'].str.split(';').str.get(0).str.lower()
 
@@ -228,7 +230,7 @@ assembly[['assembly', 'taxonomy', 'index']].to_csv('assembly2species.tsv', sep='
 assembly['fna'] = assembly['ftp_path'] + '/' + assembly['ftp_path'].str.split('/').str.get(-1) + '_genomic.fna.gz'
 
 for kingdom in ['archaea', 'bacteria']:
-    fna = assembly[assembly['group']==kingdom]['fna'].to_list()
+    fna = assembly[assembly['group'] == kingdom]['fna'].to_list()
     n = 8 if kingdom == 'archaea' else 256 # split into 8 or 256 chunks so that each contains same number of genomes
     chunks = [fna[i::n] for i in range(n)]
 
@@ -255,17 +257,19 @@ import gzip
 import pandas as pd
 from tqdm.contrib.concurrent import process_map
 
+
 def parse_file(file):
     lines = []
     with gzip.open(file, 'rt') as f:
         for line in f:
-            if line[0]=='>':
+            if line[0] == '>':
                 lines.append([line[1:].split()[0], '_'.join(os.path.basename(file).split('_')[:2])])
     return lines
 
+
 pd.DataFrame([
     x for y in process_map(parse_file, glob.glob('fna/**/*.fna.gz'), max_workers=64, chunksize=1) for x in y
-], columns = ['accession', 'assembly']).to_csv('accession2assembly.tsv', sep='\t', index=False, header=None)
+], columns=['accession', 'assembly']).to_csv('accession2assembly.tsv', sep='\t', index=False, header=None)
 "
 cd ..
 ```
@@ -363,7 +367,7 @@ with open('kegg/ko_list') as f:
 ## parse domain output files, record accession of sequences
 accession = defaultdict(set)
 for file in tqdm(glob.glob('prot/out/prokaryote.subset/*.hmm')):
-    filename = os.path.basename(file).rsplit('.',2)[0]
+    filename = os.path.basename(file).rsplit('.', 2)[0]
     with open(file) as f:
         for line in f:
             if line[0] != '#':
@@ -404,13 +408,13 @@ accession = defaultdict(set)
 with open('prot/out/env_nr.full.id') as f:
     for line in f:
         ls = line.split()
-        if len(ls)==4 and ls[-1] in {'Bacteria', 'Archaea'}:
+        if len(ls) == 4 and ls[-1] in {'Bacteria', 'Archaea'}:
             accession['env_nr.' + ls[-1].lower()].add(ls[0])
 
 for key, val in accession.items():
     with open('prot/out/{}.fa'.format(key), 'w') as w:
         subprocess.run([
-            'seqkit', 'grep', '-f', '-', 'prot/out/env_nr.full.fa'.format(key)
+            'seqkit', 'grep', '-f', '-', 'prot/out/env_nr.full.fa'
         ], check=True, text=True, input='\n'.join(val) + '\n', stdout=w)
 "
 
@@ -446,6 +450,7 @@ import pandas as pd
 from collections import defaultdict
 from tqdm.contrib.concurrent import process_map
 
+
 def parse_file(file):
     lines = []
     with open(file) as f:
@@ -460,6 +465,7 @@ def parse_file(file):
                         lines.append([ls[0], ls[3], ks['definition'], int(ls[17]), int(ls[18]), int(ls[2]), float(ls[21])])
     return lines
 
+
 ## read pre-defined threshold score for each ko
 ko_subset = set()
 with open('kegg/prokaryote.subset.id') as f:
@@ -473,7 +479,7 @@ with open('kegg/ko_list') as f:
         ls = line.rstrip().split('\t')
         if ls[2] != '-':
             ko[ls[0]]['threshold'], ko[ls[0]]['score_type'] = ls[1:3]
-            ko[ls[0]]['definition'] = ls[-1].split('protein ')[-1].lower() if ls[0] in ko_subset else 'others' 
+            ko[ls[0]]['definition'] = ls[-1].split('protein ')[-1].lower() if ls[0] in ko_subset else 'others'
 
 for source in ['env_nr', 'nr']:
     for kingdom in ['bacteria', 'archaea']:
@@ -487,7 +493,7 @@ for source in ['env_nr', 'nr']:
             (domain.groupby('accession')['knum'].transform('nunique') == 1) &
             (domain['definition'] != 'others') &
             (domain['tcov'] > 0.75)
-        ].sort_values(['accession', 'tcov'], ascending = False).groupby('accession', as_index=False).first()
+        ].sort_values(['accession', 'tcov'], ascending=False).groupby('accession', as_index=False).first()
 
         ## create a accession2description mapping
         domain['description'] = domain['definition'] + '-tcov:' + domain['tcov'].map('{:.2f}'.format) + '-acc:' + domain['acc'].map('{:.2f}'.format) + '-' + source + '-' + kingdom
@@ -565,7 +571,7 @@ with open('prot/prot.fa', 'w') as w, open('prot/clustered.fa') as f:
             if (gene := line[1:].split('-')[0]) in archaea | bacteria:
                 save = True
                 if (
-                    gene in archaea and (kingdom := line.split('-')[-2]) == 'archaea' or 
+                    gene in archaea and (kingdom := line.split('-')[-2]) == 'archaea' or
                     gene in bacteria and (kingdom := line.split('-')[-2]) == 'bacteria'
                 ):
                     accession[kingdom].add(line[1:].rstrip())
@@ -577,7 +583,7 @@ with open('prot/prot.fa', 'w') as w, open('prot/clustered.fa') as f:
 for key, val in accession.items():
     with open('prot/prot.{}.fa'.format(key), 'w') as w:
         subprocess.run([
-            'seqkit', 'grep', '-f', '-', 'prot/prot.fa'.format(key)
+            'seqkit', 'grep', '-f', '-', 'prot/prot.fa'
         ], check=True, text=True, input='\n'.join(val) + '\n', stdout=w)
 "
 ```
@@ -625,26 +631,29 @@ from math import floor, ceil
 from collections import defaultdict
 from tqdm.contrib.concurrent import process_map
 
+
 def sort_coordinate(start, end):
     return (start - 1, end, '+') if start < end else (end - 1, start, '-')
+
 
 def compute_overlap(coordinates):
     qstart, qend, sstart, send = coordinates
     overlap = min(qend, send) - max(qstart, sstart)
     return max(overlap / (qend - qstart), overlap / (send - sstart))
 
+
 def extract_sequence(file):
     filename = os.path.basename(file).split('.fna.gz')[0]
     qrange = defaultdict(set)
     lines = []
 
-    with open('nucl/out/' +filename + '.txt') as f:
+    with open('nucl/out/' + filename + '.txt') as f:
         for line in f:
             ls = line.split()
             qseqid, sseqid = ls[0], ls[1]
             qstart, qend, strand = sort_coordinate(int(ls[5]), int(ls[6]))
             if (
-                qseqid not in qrange or 
+                qseqid not in qrange or
                 all([compute_overlap((qstart, qend, *x)) < 0.25 for x in qrange.get(qseqid)])
             ):
                 qrange[qseqid].add((qstart, qend))
@@ -656,16 +665,17 @@ def extract_sequence(file):
                     lines.append([qseqid, qcoord - 5000, qcoord + 5000, sseqid, float(ls[2]), strand, sseqid.split('-')[0]])
 
     ## keep only one sequence per qseqid + gene
-    lines = pd.DataFrame(lines, columns = ['qseqid', 'qstart', 'qend', 'sseqid', 'pid', 'strand', 'gene'])
+    lines = pd.DataFrame(lines, columns=['qseqid', 'qstart', 'qend', 'sseqid', 'pid', 'strand', 'gene'])
     lines = lines.sort_values(['qseqid', 'gene', 'pid', 'strand'], ascending=False).groupby(['qseqid', 'gene'], as_index=False).first()
-    lines.drop('gene', axis=1).to_csv('nucl/out/' +filename + '.bed', sep='\t', header=None, index=False)
+    lines.drop('gene', axis=1).to_csv('nucl/out/' + filename + '.bed', sep='\t', header=None, index=False)
 
     ## extract sequneces from original files
     with open('nucl/seq/' + filename + '.fa', 'w') as f:
         subprocess.run([
             'seqkit', 'subseq', file,
             '--bed', 'nucl/out/' + filename + '.bed'
-        ], stdout = f, stderr=subprocess.DEVNULL, check=True)
+        ], stdout=f, stderr=subprocess.DEVNULL, check=True)
+
 
 process_map(extract_sequence, glob.glob('assemblies/fna/*.fna.gz'), max_workers=64, chunksize=1)
 "
@@ -716,7 +726,7 @@ with open('nucl/nucl_a.fa', 'w') as w:
 ## save the metadata file for later usage
 pd.DataFrame([
     [x] + assembly2species.get(accession2assembly.get(x))[0].split(';') for x in accession
-], columns = ['accession', 'superkingdom', 'phylum', 'class', 'order', 'family', 'genus', 'species']).sort_values('accession').to_csv('nucl/raw.tsv', index=False, sep='\t')
+], columns=['accession', 'superkingdom', 'phylum', 'class', 'order', 'family', 'genus', 'species']).sort_values('accession').to_csv('nucl/raw.tsv', index=False, sep='\t')
 "
 ```
 

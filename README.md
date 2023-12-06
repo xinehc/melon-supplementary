@@ -194,10 +194,11 @@ wget -q --show-progress https://ftp.ncbi.nlm.nih.gov/genomes/refseq/assembly_sum
 wget -q --show-progress https://ftp.ncbi.nlm.nih.gov/genomes/genbank/assembly_summary_genbank.txt
 wget -q --show-progress https://ftp.ncbi.nlm.nih.gov/genomes/genbank/assembly_summary_genbank_historical.txt
 
-wget -q --show-progress https://data.gtdb.ecogenomic.org/releases/latest/ar53_metadata.tar.gz
-wget -q --show-progress https://data.gtdb.ecogenomic.org/releases/latest/bac120_metadata.tar.gz
-tar -xvf ar53_metadata.tar.gz
-tar -xvf bac120_metadata.tar.gz
+wget -q --show-progress https://data.gtdb.ecogenomic.org/releases/latest/ar53_metadata.tsv.gz
+wget -q --show-progress https://data.gtdb.ecogenomic.org/releases/latest/bac120_metadata.tsv.gz
+
+gzip -d ar53_metadata.tsv.gz
+gzip -d bac120_metadata.tsv.gz
 
 python -c "
 import pandas as pd
@@ -211,8 +212,8 @@ ncbi = pd.concat([
 ]).rename({'#assembly_accession': 'assembly'}, axis=1)
 
 gtdb = pd.concat([
-    pd.read_table('ar53_metadata_r214.tsv'),
-    pd.read_table('bac120_metadata_r214.tsv')
+    pd.read_table('ar53_metadata.tsv', low_memory=False),
+    pd.read_table('bac120_metadata.tsv', low_memory=False)
 ])
 gtdb['assembly'] = gtdb.accession.str.split('_', n=1).str.get(-1)
 

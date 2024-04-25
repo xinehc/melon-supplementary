@@ -550,13 +550,15 @@ for key, val in sequence.items():
 mkdir -p prot/clustered
 
 ls prot/raw/*.fa | sort | xargs -P 8 -I {} bash -c '
-    filename=${1%.fa*}; \
-    filename=${filename##*/}; \
-    echo $filename; \
+    filename=${1%.fa*};
+    filename=${filename##*/};
+    FILE_SIZE=$(stat -c '%s' prot/raw/$filename.fa)
+    if [ "$FILE_SIZE" -gt 10000000 ]; then THREADS=8; else THREADS=1; fi;
+    echo $filename $FILE_SIZE $THREADS;
     mmseqs easy-cluster \
         $1 prot/clustered/$filename prot/clustered/$filename \
         -c 0.95 --min-seq-id 0.95 --cov-mode 0 \
-        -s 7.5 --cluster-reassign --threads 8 -v 0 > /dev/null' - {}
+        -s 7.5 --cluster-reassign --threads $THREADS -v 0 > /dev/null' - {}
 ```
 
 Merge all clustered files to get the final protein database.
@@ -739,13 +741,15 @@ pd.DataFrame([
 mkdir -p nucl/clustered
 
 find nucl/raw -name '*.fa' | sort | xargs -P 16 -I {} bash -c '
-    filename=${1%.fa*}; \
-    filename=${filename##*/}; \
-    echo $filename; \
+    filename=${1%.fa*};
+    filename=${filename##*/};
+    FILE_SIZE=$(stat -c '%s' nucl/raw/$filename.fa)
+    if [ "$FILE_SIZE" -gt 10000000 ]; then THREADS=4; else THREADS=1; fi;
+    echo $filename $FILE_SIZE $THREADS;
     mmseqs easy-cluster \
         $1 nucl/clustered/$filename nucl/clustered/$filename \
         -c 0.9995 --min-seq-id 0.9995 --cov-mode 1 \
-        -s 7.5 --cluster-reassign --threads 4 -v 0 > /dev/null' - {}
+        -s 7.5 --cluster-reassign --threads $THREADS -v 0 > /dev/null' - {}
 ```
 
 Combine all clustered files to get the nucleotide database.

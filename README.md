@@ -249,9 +249,9 @@ print(f'#deprecated_reps: {len(assembly[deprecated])}')
 
 ```bash
 ## download assemblies then cat
-find assembly/fna -name '*.id' | xargs -P 32 -I {} bash -c '
+find assembly/fna -maxdepth 1 -name '*.id' | xargs -P 32 -I {} bash -c '
     wget -i ${1} -qN --show-progress -P ${1%.id}; \
-    find ${1%.id} -name "*.fna.gz" | xargs cat > ${1%.id}.fna.gz' - {}
+    find ${1%.id} -maxdepth 1 -name "*.fna.gz" | xargs cat > ${1%.id}.fna.gz' - {}
 
 ## create a dictionary that maps sequence to assembly
 python -c "
@@ -593,10 +593,10 @@ with open('prot/prot.fa', 'w') as w, open('prot/clustered.fa') as f:
 ```bash
 mkdir -p nucl/out
 
-find assembly/fna -name '*.fna.gz' | sort | xargs -P 8 -I {} bash -c '
-    filename=${1%.fna*}; \
-    filename=${filename##*/}; \
-    echo $filename; \
+find assembly/fna -maxdepth 1 -name '*.fna.gz' | sort | xargs -P 8 -I {} bash -c '
+    filename=${1%.fna*};
+    filename=${filename##*/};
+    echo $filename;
     diamond blastx \
         --db prot/prot.fa \
         --query $1 \
@@ -740,7 +740,7 @@ pd.DataFrame([
 ```bash
 mkdir -p nucl/clustered
 
-find nucl/raw -name '*.fa' | sort | xargs -P 16 -I {} bash -c '
+find nucl/raw -maxdepth 1 -name '*.fa' | sort | xargs -P 16 -I {} bash -c '
     filename=${1%.fa*};
     filename=${filename##*/};
     FILE_SIZE=$(stat -c '%s' nucl/raw/$filename.fa)
@@ -755,7 +755,7 @@ find nucl/raw -name '*.fa' | sort | xargs -P 16 -I {} bash -c '
 Combine all clustered files to get the nucleotide database.
 
 ```bash
-find nucl/clustered -name '*rep_seq.fasta' -exec cat {} \; > nucl/nucl_b.fa
+find nucl/clustered -maxdepth 1 -name '*rep_seq.fasta' -exec cat {} \; > nucl/nucl_b.fa
 cat nucl/nucl_a.fa nucl/nucl_b.fa | seqkit sort | seqkit shuffle -s 0 > nucl/nucl.fa
 
 python -c "

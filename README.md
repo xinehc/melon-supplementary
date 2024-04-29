@@ -705,9 +705,10 @@ with open('nucl/raw.fa') as f:
             gs = ls[1].split('-')
             ac = ls[0][1:].rsplit('_', 1)[0]
             species = assembly2species.get(accession2assembly.get(ac))
+            phylum = species[0].split(';')[0].split('|')[-1]
             if (
-                species[0].split(';')[0] == 'Archaea' and gs[4] == 'archaea' and gs[0] in archaea or
-                species[0].split(';')[0] == 'Bacteria' and gs[4] == 'bacteria' and gs[0] in bacteria
+                phylum == 'Archaea' and gs[4] == 'archaea' and gs[0] in archaea or
+                phylum == 'Bacteria' and gs[4] == 'bacteria' and gs[0] in bacteria
             ):
                 save = True
                 accession.add(ac)

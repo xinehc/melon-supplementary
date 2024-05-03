@@ -788,5 +788,5 @@ Get all necessary files into the database.
 ```bash
 mkdir -p database
 cp prot/prot.fa nucl/metadata.tsv nucl/nucl.bacteria*.fa nucl/nucl.archaea*.fa database
-tar -zcvf database.tar.gz database
+tar --sort=name -zcvf database.tar.gz database
 ```

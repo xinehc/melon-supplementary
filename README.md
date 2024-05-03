@@ -552,7 +552,7 @@ mkdir -p prot/clustered
 ls prot/raw/*.fa | sort | xargs -P 8 -I {} bash -c '
     filename=${1%.fa*};
     filename=${filename##*/};
-    FILE_SIZE=$(stat -c '%s' prot/raw/$filename.fa)
+    FILE_SIZE=$(stat -c "%s" prot/raw/$filename.fa)
     if [ "$FILE_SIZE" -gt 10000000 ]; then THREADS=8; else THREADS=1; fi;
     echo $filename $FILE_SIZE $THREADS;
     mmseqs easy-cluster \
@@ -657,13 +657,13 @@ def extract_sequence(file):
     ## keep only one sequence per qseqid + gene
     lines = pd.DataFrame(lines, columns=['qseqid', 'qstart', 'qend', 'sseqid', 'pident', 'strand', 'gene'])
     lines = lines.sort_values(['qseqid', 'gene', 'pident', 'strand'], ascending=False).groupby(['qseqid', 'gene'], as_index=False).first()
-    lines.drop('gene', axis=1).to_csv('nucl/out/' + filename + '.bed', sep='\t', header=None, index=False)
+    lines.drop('gene', axis=1).to_csv('nucl/seq/' + filename + '.bed', sep='\t', header=None, index=False)
 
     ## extract sequneces from original files
     with open('nucl/seq/' + filename + '.fa', 'w') as f:
         subprocess.run([
             'seqkit', 'subseq', file,
-            '--bed', 'nucl/out/' + filename + '.bed'
+            '--bed', 'nucl/seq/' + filename + '.bed'
         ], stdout=f, stderr=subprocess.DEVNULL, check=True)
 
 process_map(extract_sequence, glob.glob('assembly/fna/*.fna.gz'), max_workers=64, chunksize=1)
@@ -744,7 +744,7 @@ mkdir -p nucl/clustered
 find nucl/raw -maxdepth 1 -name '*.fa' | sort | xargs -P 16 -I {} bash -c '
     filename=${1%.fa*};
     filename=${filename##*/};
-    FILE_SIZE=$(stat -c '%s' nucl/raw/$filename.fa)
+    FILE_SIZE=$(stat -c "%s" nucl/raw/$filename.fa)
     if [ "$FILE_SIZE" -gt 10000000 ]; then THREADS=4; else THREADS=1; fi;
     echo $filename $FILE_SIZE $THREADS;
     mmseqs easy-cluster \

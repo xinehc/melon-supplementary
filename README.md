@@ -603,7 +603,7 @@ find assembly/fna -maxdepth 1 -name '*.fna.gz' | sort | xargs -P 8 -I {} bash -c
         --out nucl/out/${filename}.txt \
         --outfmt 6 qseqid sseqid pident length qlen qstart qend slen sstart send evalue bitscore \
         --evalue 1e-15 --subject-cover 75 \
-        --range-culling -F 15 --range-cover 25 \
+        --range-culling --frameshift 15 --range-cover 25 \
         --max-hsps 0 --max-target-seqs 25 \
         --threads 8 --quiet' - {}
 ```

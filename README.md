@@ -10,7 +10,7 @@ Instruction on building the NCBI/GTBD database of Melon.
    * [Step 6: Download assemblies and generate an accession2assembly mapping](#step-6-download-assemblies-and-generate-an-accession2assembly-mapping)
 - [Construction of the protein database](#construction-of-the-protein-database)
    * [Step 1: Extract protein sequences from BLAST databases](#step-1-extract-protein-sequences-from-blast-databases)
-   * [Step 2: Re-annotating protein sequences](#step-2-re-annotating-protein-sequences)
+   * [Step 2: Re-annotate protein sequences](#step-2-re-annotate-protein-sequences)
    * [Step 3: Cluster to reduce redundancy](#step-3-cluster-to-reduce-redundancy)
 - [Construction of the nucleotide database](#construction-of-the-nucleotide-database)
    * [Step 1: Map assemblies to the protein databases](#step-1-map-assemblies-to-the-protein-databases)
@@ -321,7 +321,7 @@ with open('protein/nr.shared.id', 'w') as w:
 "
 ```
 
-### Step 2: Re-annotating protein sequences
+### Step 2: Re-annotate protein sequences
 Annotating against the full KEGG profile HMMs will take days, so we first use a subset of prokaryotic profile HMMs (91 ribosomal protein profile HMMs) to get a candidate subset of sequences, then use the full profile HMMs to get the complete annotations.
 
 ```bash
@@ -422,7 +422,7 @@ for key, val in accession.items():
         ], check=True, text=True, input='\n'.join(val) + '\n', stdout=w)
 "
 
-rm -rf prot/out/env_nr.full.*
+rm -rf prot/out/env_nr.full.fa
 ```
 
 Rerun `hmmsearch` but against the full set of prokaryotic profile HMMs.
@@ -524,7 +524,7 @@ Combine all extracted sequences, shuffle, then split for each combination of kin
 
 ```bash
 mkdir -p prot/raw
-cat prot/seq/*.fa | seqkit sort | seqkit shuffle -s 0 > prot/raw.fa
+find prot/seq -maxdepth 1 -name '*.fa' | sort | xargs cat > prot/raw.fa
 
 python -c "
 from collections import defaultdict
@@ -675,7 +675,7 @@ Create a file for each species-gene combo.
 
 ```bash
 mkdir -p nucl/raw
-cat nucl/seq/*.fa | seqkit sort | seqkit shuffle -s 0 > nucl/raw.fa
+find nucl/seq -maxdepth 1 -name '*.fa' | sort | xargs cat > nucl/raw.fa
 
 python -c "
 import pandas as pd

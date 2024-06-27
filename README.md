@@ -1,22 +1,26 @@
 # Melon-supplementary
 Instruction on building the NCBI/GTBD database of Melon.
-- [Prerequisite](#prerequisite)
-   * [Step 1: Install necessary packages](#step-1-install-necessary-packages)
-   * [Step 2: Download protein sequences from https://ftp.ncbi.nlm.nih.gov/blast/db/](#step-2-download-protein-sequences-from-httpsftpncbinlmnihgovblastdb)
-   * [Step 3: Download taxonomy files from https://ftp.ncbi.nlm.nih.gov/pub/taxonomy/](#step-3-download-taxonomy-files-from-httpsftpncbinlmnihgovpubtaxonomy)
-   * [Step 4: Download profile HMMs from https://www.genome.jp/ftp/db/kofam/](#step-4-download-profile-hmms-from-httpswwwgenomejpftpdbkofam)
-   * [Step 5: Collect NCBI assemblies](#step-5-collect-ncbi-assemblies)
-   * [Step 5 (alternative): Collect GTDB assemblies](#step-5-alternative-collect-gtdb-assemblies)
-   * [Step 6: Download assemblies and generate an accession2assembly mapping](#step-6-download-assemblies-and-generate-an-accession2assembly-mapping)
-- [Construction of the protein database](#construction-of-the-protein-database)
-   * [Step 1: Extract protein sequences from BLAST databases](#step-1-extract-protein-sequences-from-blast-databases)
-   * [Step 2: Re-annotate protein sequences](#step-2-re-annotate-protein-sequences)
-   * [Step 3: Cluster to reduce redundancy](#step-3-cluster-to-reduce-redundancy)
-- [Construction of the nucleotide database](#construction-of-the-nucleotide-database)
-   * [Step 1: Map assemblies to the protein databases](#step-1-map-assemblies-to-the-protein-databases)
-   * [Step 2: Parse output files and extract sequences](#step-2-parse-output-files-and-extract-sequences)
-   * [Step 3: Cluster to remove duplicated sequences](#step-3-cluster-to-remove-duplicated-sequences)
-- [Compress](#compress)
+* [Prerequisite](#prerequisite)
+  + [Step 1: Install necessary packages](#step-1-install-necessary-packages)
+  + [Step 2: Download protein sequences from https://ftp.ncbi.nlm.nih.gov/blast/db/](#step-2-download-protein-sequences-from-httpsftpncbinlmnihgovblastdb)
+  + [Step 3: Download taxonomy files from https://ftp.ncbi.nlm.nih.gov/pub/taxonomy/](#step-3-download-taxonomy-files-from-httpsftpncbinlmnihgovpubtaxonomy)
+  + [Step 4: Download profile HMMs from https://www.genome.jp/ftp/db/kofam/](#step-4-download-profile-hmms-from-httpswwwgenomejpftpdbkofam)
+  + [Step 5: Collect NCBI assemblies](#step-5-collect-ncbi-assemblies)
+  + [Step 5 (alternative): Collect GTDB assemblies](#step-5-alternative-collect-gtdb-assemblies)
+  + [Step 6: Download assemblies and generate an accession2assembly mapping](#step-6-download-assemblies-and-generate-an-accession2assembly-mapping)
+* [Construction of the protein database](#construction-of-the-protein-database)
+  + [Step 1: Extract protein sequences from BLAST databases](#step-1-extract-protein-sequences-from-blast-databases)
+  + [Step 2: Re-annotate protein sequences](#step-2-re-annotate-protein-sequences)
+  + [Step 3: Cluster to reduce redundancy](#step-3-cluster-to-reduce-redundancy)
+* [Construction of the nucleotide database](#construction-of-the-nucleotide-database)
+  + [Step 1: Map assemblies to the protein databases](#step-1-map-assemblies-to-the-protein-databases)
+  + [Step 2: Parse output files and extract sequences](#step-2-parse-output-files-and-extract-sequences)
+  + [Step 3: Cluster to remove duplicated sequences](#step-3-cluster-to-remove-duplicated-sequences)
+* [Add non-prokaryotic sequences as decoys](#add-non-prokaryotic-sequences-as-decoys)
+  + [Step 1: Download RefSeq non-prokaryotic protein sequences](#step-1-download-refseq-non-prokaryotic-protein-sequences)
+  + [Step 2: Annotate sequences with a subset of HMM profiles](#step-2-annotate-sequences-with-a-subset-of-hmm-profiles)
+  + [Step 3: Cluster for deduplication](#step-3-cluster-for-deduplication)
+* [Compress](#compress)
 
 ## Prerequisite
 ### Step 1: Install necessary packages
@@ -422,7 +426,7 @@ for key, val in accession.items():
         ], check=True, text=True, input='\n'.join(val) + '\n', stdout=w)
 "
 
-rm -rf prot/out/env_nr.full.fa
+rm -rf prot/out/env_nr.full.*
 ```
 
 Rerun `hmmsearch` but against the full set of prokaryotic profile HMMs.
@@ -782,11 +786,162 @@ metadata[metadata.accession.isin(accession)].to_csv('nucl/metadata.tsv', index=F
 "
 ```
 
+## Add non-prokaryotic sequences as decoys
+### Step 1: Download RefSeq non-prokaryotic protein sequences
+Download RefSeq fungi, protozoa, viral, plant, and human GRCh38/hg38 (Kraken2's PlusPFP equivalent).
+
+```bash
+mkdir -p plus/faa
+python -c "
+import pandas as pd
+
+assembly = pd.read_table('assembly/assembly_summary_refseq.txt', skiprows=1, low_memory=False).rename({'#assembly_accession': 'assembly'}, axis=1)
+assembly = assembly[assembly['ftp_path'] != 'na']
+
+## plusPFP setup
+assembly.loc[(assembly.organism_name.str.contains('Homo sapiens')) & (assembly.refseq_category == 'reference genome'), 'group'] = 'human'
+assembly = assembly[assembly.group.isin({'fungi', 'protozoa', 'viral', 'plant', 'human'})]
+assembly = assembly[assembly.assembly_level.isin({'Chromosome', 'Complete Genome'})]
+
+## download protein sequences
+assembly['fna'] = assembly['ftp_path'] + '/' + assembly['ftp_path'].str.split('/').str.get(-1) + '_protein.faa.gz'
+for taxonomy in assembly.group.unique():
+    fna = assembly[assembly['group'] == taxonomy]['fna'].to_list()
+    n = 32 if taxonomy == 'viral' else 8
+    chunks = [fna[i::n] for i in range(n)]
+
+    for i, chunk in enumerate(chunks):
+        if chunk:
+            with open('plus/faa/' + taxonomy + '.split.' + str(i) + '.id', 'w') as w:
+                w.write('\n'.join(chunk) + '\n')
+"
+
+find plus/faa -maxdepth 1 -name '*.id' | xargs -P 32 -I {} bash -c '
+    wget -i ${1} -qN --show-progress -P ${1%.id}; \
+    find ${1%.id} -maxdepth 1 -name "*.faa.gz" | xargs cat | gzip -d > ${1%.id}.faa' - {}
+```
+
+### Step 2: Annotate sequences with a subset of HMM profiles
+Annotate sequences using the selected marker HMMs.
+
+```bash
+mkdir -p plus/out
+python -c "
+from collections import defaultdict
+import os
+import shutil
+os.makedirs('plus/profile', exist_ok=True)
+archaea = {'l2', 'l11', 'l10e', 'l15e', 'l18e', 's3ae', 's19e', 's28e'}
+bacteria = {'l2', 'l11', 'l20', 'l27', 's2', 's7', 's9', 's16'}
+
+ko = []
+with open('profile/ko_list') as f:
+    next(f)
+    for line in f:
+        ls = line.rstrip().split('\t')
+        gene = ls[-1].split('ribosomal protein ')[-1].lower()
+        if ls[2] != '-' and gene in archaea | bacteria:
+            ko.append(ls[0])
+
+for i in ko:
+    shutil.copy(f'profile/profiles/{i}.hmm', f'plus/profile/{i}.hmm')
+"
+
+for file in plus/faa/*.faa
+do
+    filename=${file%.faa}
+    filename=${filename##*/}
+
+    ls plus/profile \
+    | xargs -P 8 -I {} hmmsearch \
+        --domtblout plus/out/$filename.{} \
+        -E 2147483647 --domE 2147483647 \
+        --noali \
+        --cpu 8 \
+        plus/profile/{} $file > /dev/null
+done
+```
+
+Extract valid sequences.
+
+```bash
+python -c "
+import glob
+import pandas as pd
+from collections import defaultdict
+from tqdm.contrib.concurrent import process_map
+from tqdm import tqdm
+
+def parse_file(file):
+    lines = []
+    with open(file) as f:
+        for line in f:
+            if line[0] != '#':
+                ls = line.rstrip().split(maxsplit=22)
+                if (ks := ko.get(ls[3])) is not None:
+                    if (
+                        ks['score_type'] == 'full' and float(ls[7]) > float(ks['threshold']) * .75 or
+                        ks['score_type'] == 'domain' and float(ls[13]) > float(ks['threshold']) * .75
+                    ):
+                        lines.append([ls[0], ls[3], ks['definition'], int(ls[17]), int(ls[18]), int(ls[2]), float(ls[21])] + [file.split('/')[-1].split('.')[0]])
+    return lines
+
+## read pre-defined threshold score for each ko
+ko = defaultdict(dict)
+with open('profile/ko_list') as f:
+    next(f)
+    for line in f:
+        ls = line.rstrip().split('\t')
+        if ls[2] != '-':
+            ko[ls[0]]['threshold'], ko[ls[0]]['score_type'] = ls[1:3]
+            ko[ls[0]]['definition'] = ls[-1].split('protein ')[-1].lower()
+
+domain = pd.DataFrame([
+    x for y in process_map(parse_file, glob.glob(f'plus/out/*.hmm'), max_workers=64, chunksize=1) for x in y
+], columns=['accession', 'knum', 'definition', 'tstart', 'tend', 'tlen', 'acc', 'taxonomy'])
+domain['tcov'] = (domain['tend'] - domain['tstart'] + 1) / domain['tlen']
+
+## use permissive tcov cutoff for filtering since eukaryotic RPGs may be more complicated than prokaryotic RPGs
+domain = domain[domain['tcov'] > 0.25].sort_values(['accession', 'tcov'], ascending=False).groupby('accession', as_index=False).first()
+
+## create a accession2description mapping
+domain['description'] = domain['definition'] + '-tcov:' + domain['tcov'].map('{:.2f}'.format) + '-acc:' + domain['acc'].map('{:.2f}'.format) + '-' + 'refseq' + '-' + domain['taxonomy']
+accession2description = domain.set_index('accession')['description'].to_dict()
+
+## save filtered sequences
+with open('plus/plus.fa', 'w') as w:
+    for file in tqdm(sorted(glob.glob('plus/faa/*.faa'))):
+        with open(file) as f:
+            for line in f:
+                if line[0] == '>':
+                    accession = line[1:].split()[0]
+                    if (description := accession2description.get(accession)) is not None and ', partial' not in line:
+                        w.write('>' + description + '-' + accession + '\n')
+                        save = True
+                        continue
+                    else:
+                        save = False
+                if save:
+                    w.write(line)
+"
+```
+
+### Step 3: Cluster for deduplication
+Cluster to remove redundant sequences.
+
+```bash
+mmseqs easy-cluster \
+        plus/plus.fa plus/plus plus/plus \
+        -c 0.95 --min-seq-id 0.95 --cov-mode 0 \
+        -s 7.5 --cluster-reassign --threads 64 -v 0
+```
+
 ## Compress
 Get all necessary files into the database.
 
 ```bash
 mkdir -p database
-cp prot/prot.fa nucl/metadata.tsv nucl/nucl.bacteria*.fa nucl/nucl.archaea*.fa database
+cp nucl/metadata.tsv nucl/nucl.bacteria*.fa nucl/nucl.archaea*.fa database
+cat plus/plus_rep_seq.fasta prot/prot.fa | seqkit sort | seqkit shuffle -s 0 > database/prot.fa
 tar --sort=name -zcvf database.tar.gz database
 ```

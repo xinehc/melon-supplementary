@@ -203,7 +203,7 @@ gtdb['assembly'] = gtdb.accession.str.split('_', n=1).str.get(-1)
 assembly = pd.merge(gtdb, ncbi[['assembly', 'ftp_path']], how='left', on='assembly')
 assembly[(assembly.ftp_path == 'na') | (assembly.ftp_path.isnull())].to_csv('assembly/deprecated.tsv', index=False, sep='\t')
 
-assembly = assembly[(~(assembly.ftp_path == 'na') | (assembly.ftp_path.isnull())) | (assembly.gtdb_representative == 't')]
+assembly = assembly[((assembly.ftp_path != 'na') & (assembly.ftp_path.notnull())) | (assembly.gtdb_representative == 't')]
 assembly['taxonomy'] = assembly['gtdb_taxonomy'].str.replace('[a-z]__', '', regex=True)
 assembly['group'] = assembly['taxonomy'].str.split(';').str.get(0).str.lower()
 

@@ -1,50 +1,48 @@
 # Melon-supplementary
 Instruction on building the NCBI/GTBD database of Melon.
-* [Prerequisite](#prerequisite)
-  + [Step 1: Install necessary packages](#step-1-install-necessary-packages)
-  + [Step 2: Download protein sequences from https://ftp.ncbi.nlm.nih.gov/blast/db/](#step-2-download-protein-sequences-from-httpsftpncbinlmnihgovblastdb)
-  + [Step 3: Download taxonomy files from https://ftp.ncbi.nlm.nih.gov/pub/taxonomy/](#step-3-download-taxonomy-files-from-httpsftpncbinlmnihgovpubtaxonomy)
-  + [Step 4: Download profile HMMs from https://www.genome.jp/ftp/db/kofam/](#step-4-download-profile-hmms-from-httpswwwgenomejpftpdbkofam)
-  + [Step 5: Collect NCBI assemblies](#step-5-collect-ncbi-assemblies)
-  + [Step 5 (alternative): Collect GTDB assemblies](#step-5-alternative-collect-gtdb-assemblies)
-  + [Step 6: Download assemblies and generate an accession2assembly mapping](#step-6-download-assemblies-and-generate-an-accession2assembly-mapping)
-* [Construction of the protein database](#construction-of-the-protein-database)
-  + [Step 1: Extract protein sequences from BLAST databases](#step-1-extract-protein-sequences-from-blast-databases)
-  + [Step 2: Re-annotate protein sequences](#step-2-re-annotate-protein-sequences)
-  + [Step 3: Cluster to reduce redundancy](#step-3-cluster-to-reduce-redundancy)
-* [Construction of the nucleotide database](#construction-of-the-nucleotide-database)
-  + [Step 1: Map assemblies to the protein databases](#step-1-map-assemblies-to-the-protein-databases)
-  + [Step 2: Parse output files and extract sequences](#step-2-parse-output-files-and-extract-sequences)
-  + [Step 3: Cluster to remove duplicated sequences](#step-3-cluster-to-remove-duplicated-sequences)
-* [Add non-prokaryotic sequences as decoys](#add-non-prokaryotic-sequences-as-decoys)
-  + [Step 1: Download RefSeq non-prokaryotic protein sequences](#step-1-download-refseq-non-prokaryotic-protein-sequences)
-  + [Step 2: Annotate sequences with a subset of HMM profiles](#step-2-annotate-sequences-with-a-subset-of-hmm-profiles)
-  + [Step 3: Cluster for deduplication](#step-3-cluster-for-deduplication)
-* [Compress](#compress)
+- [Prerequisite](#prerequisite)
+  - [Step 1: Install necessary packages](#step-1-install-necessary-packages)
+  - [Step 2: Download protein sequences from https://ftp.ncbi.nlm.nih.gov/blast/db/](#step-2-download-protein-sequences-from-httpsftpncbinlmnihgovblastdb)
+  - [Step 3: Download taxonomy files from https://ftp.ncbi.nlm.nih.gov/pub/taxonomy/](#step-3-download-taxonomy-files-from-httpsftpncbinlmnihgovpubtaxonomy)
+  - [Step 4: Download profile HMMs from https://www.genome.jp/ftp/db/kofam/](#step-4-download-profile-hmms-from-httpswwwgenomejpftpdbkofam)
+  - [Step 5: Collect NCBI assemblies](#step-5-collect-ncbi-assemblies)
+  - [Step 5 (alternative): Collect GTDB assemblies](#step-5-alternative-collect-gtdb-assemblies)
+  - [Step 6: Download assemblies and generate an accession2assembly mapping](#step-6-download-assemblies-and-generate-an-accession2assembly-mapping)
+- [Construction of the protein database](#construction-of-the-protein-database)
+  - [Step 1: Extract protein sequences](#step-1-extract-protein-sequences)
+  - [Step 2: Re-annotate protein sequences](#step-2-re-annotate-protein-sequences)
+  - [Step 3: Cluster to reduce redundancy](#step-3-cluster-to-reduce-redundancy)
+- [Construction of the nucleotide database](#construction-of-the-nucleotide-database)
+  - [Step 1: Map assemblies to the protein databases](#step-1-map-assemblies-to-the-protein-databases)
+  - [Step 2: Parse output files and extract sequences](#step-2-parse-output-files-and-extract-sequences)
+  - [Step 3: Cluster to remove duplicated sequences](#step-3-cluster-to-remove-duplicated-sequences)
+- [(optional) Add non-prokaryotic sequences as decoys](#optional-add-non-prokaryotic-sequences-as-decoys)
+  - [Step 1: Download RefSeq non-prokaryotic protein sequences](#step-1-download-refseq-non-prokaryotic-protein-sequences)
+  - [Step 2: Annotate sequences with a subset of HMM profiles](#step-2-annotate-sequences-with-a-subset-of-hmm-profiles)
+  - [Step 3: Cluster for deduplication](#step-3-cluster-for-deduplication)
+- [Compress](#compress)
 
 ## Prerequisite
 ### Step 1: Install necessary packages
 ```bash
-conda install -c bioconda -c conda-forge 'taxonkit>=0.15.1' 'seqkit>=2.6.1' 'hmmer>=3.4' 'mmseqs2>=15.6f452' 'blast>=2.15.0' 'diamond==2.1.8' 'tqdm' 'pandas' 'requests'
+conda install -c bioconda -c conda-forge 'taxonkit>=0.15.1' 'seqkit>=2.6.1' 'hmmer>=3.4' 'mmseqs2>=15.6f452' 'blast>=2.15.0' 'diamond>=2.1.11' 'tqdm' 'pandas' 'requests'
 ```
 
 ### Step 2: Download protein sequences from https://ftp.ncbi.nlm.nih.gov/blast/db/
-> [!NOTE]
+> [!TIP]
 > Use `ascp` from IBM Aspera or `update_blastdb.pl` from `BLAST+` to speed up if necessary.
 
 ```bash
-## download all splits in a loop
-for folder in env_nr nr
-do
-    curl ftp://ftp.ncbi.nlm.nih.gov/blast/db/ \
-        | grep '[^ ]*.gz$' -o \
-        | grep ^$folder \
-        | xargs -P 32 -I {} wget -qN --show-progress https://ftp.ncbi.nlm.nih.gov/blast/db/{} -P protein/$folder
+## download all splits of nr
+source=nr
+curl ftp://ftp.ncbi.nlm.nih.gov/blast/db/ \
+    | grep '[^ ]*.gz$' -o \
+    | grep ^$source \
+    | xargs -P 32 -I {} wget -qN --show-progress https://ftp.ncbi.nlm.nih.gov/blast/db/{} -P protein/$source
 
-    ## decompress all files
-    for file in protein/$folder/*.tar.gz; do tar -xvf $file -C protein/$folder; done
-    rm -rf protein/$folder/*.tar.gz
-done
+## decompress all files
+for file in protein/$source/*.tar.gz; do tar -xvf $file -C protein/$source; done
+rm -rf protein/$source/*.tar.gz
 ```
 
 ### Step 3: Download taxonomy files from https://ftp.ncbi.nlm.nih.gov/pub/taxonomy/
@@ -52,7 +50,6 @@ done
 ```bash
 ## download taxonomy dump and protein accessions
 wget -qN --show-progress https://ftp.ncbi.nlm.nih.gov/pub/taxonomy/taxdump.tar.gz -P taxonomy
-wget -qN --show-progress https://ftp.ncbi.nlm.nih.gov/pub/taxonomy/accession2taxid/prot.accession2taxid.FULL.gz -P taxonomy
 tar -xvf taxonomy/taxdump.tar.gz -C taxonomy
 
 ## extract bacteria/archaea taxids using taxonkit
@@ -62,47 +59,56 @@ taxonkit list --ids 2157 --indent '' --data-dir taxonomy > taxonomy/archaea.id
 
 ### Step 4: Download profile HMMs from https://www.genome.jp/ftp/db/kofam/
 > [!NOTE]
-> We validated ver. 2023-04-01 using RefSeq proteins. Using other versions, including the latest version is also OK but profiles of specific marker genes may not function well.
+> We validated ver. 2025-01-01 using RefSeq proteins. Using other versions, including the latest version is also OK but profiles of specific marker genes may not function well.
 
 ```bash
 ## download profiles and ko metadata
-wget -qN --show-progress https://www.genome.jp/ftp/db/kofam/archives/2023-04-01/ko_list.gz -P profile
-wget -qN --show-progress https://www.genome.jp/ftp/db/kofam/archives/2023-04-01/profiles.tar.gz -P profile
+wget -qN --show-progress https://www.genome.jp/ftp/db/kofam/archives/2025-01-01/ko_list.gz -P profile
+wget -qN --show-progress https://www.genome.jp/ftp/db/kofam/archives/2025-01-01/profiles.tar.gz -P profile
 gzip -d profile/ko_list.gz
 tar -xvf profile/profiles.tar.gz -C profile
 
 ## collect ribosomal protein ko
 mkdir -p profile/prokaryote.full profile/prokaryote.subset
+
 python -c "
+import shutil
 import requests
 
 ## https://www.genome.jp/brite/ko03011
+## https://www.genome.jp/kegg/annotation/br01610.html
 response = requests.get('https://www.genome.jp/kegg-bin/download_htext?htext=ko03011.keg&format=htext&filedir=')
 
-## https://www.genome.jp/kegg/annotation/br01610.html
-with open('profile/prokaryote.subset.id', 'w') as w:
-    for line in response.text.rstrip().split('\n'):
-        if line:
-            ls = line.split()
-            if ls[0] == 'B':
-                if ls[1] in {'Bacteria', 'Archaea'}:
-                    kingdom = ls[1].lower()
-                else:
-                    kingdom = None
+ko_full = set()
+with open('profile/profiles/prokaryote.hal') as f:
+    for line in f:
+        ko_full.add(line.rstrip().split('.hmm')[0])
 
-            if ls[0] == 'D' and kingdom is not None:
-                if ls[1] not in {'K19032', 'K19033'}: # skip these two not in <Ribosomal protein gene clusters in prokaryotes>
-                    w.write(ls[1] + '\t' + kingdom + '\n')
+ko_subset = set()
+for line in response.text.rstrip().split('\n'):
+    if line:
+        ls = line.split()
+        if ls[0] == 'B':
+            if ls[1] in {'Bacteria', 'Archaea'}:
+                kingdom = ls[1].lower()
+            else:
+                kingdom = None
+
+        if ls[0] == 'D' and kingdom is not None:
+            if ls[1] not in {'K19032', 'K19033'}: # skip these two not in <Ribosomal protein gene clusters in prokaryotes>
+                ko_subset.add(ls[1])
+
+for ko in ko_subset:
+    shutil.copy(f'profile/profiles/{ko}.hmm', f'profile/prokaryote.subset/{ko}.hmm')
+
+for ko in ko_full:
+    shutil.copy(f'profile/profiles/{ko}.hmm', f'profile/prokaryote.full/{ko}.hmm')
 "
-
-## copy profiles to a directory
-cut profile/prokaryote.subset.id -f 1 | uniq | xargs -P 64 -I {} cp profile/profiles/{}.hmm profile/prokaryote.subset/{}.hmm
-cut profile/profiles/prokaryote.hal -f 1 | uniq | xargs -P 64 -I {} cp profile/profiles/{} profile/prokaryote.full/{}
 ```
 
 ### Step 5: Collect NCBI assemblies
-> [!NOTE]
-> If you want to build a GTDB database, please jump to [Step 5 (alternative): Collect GTDB assemblies](#step-5-alternative-collect-gtdb-assemblies).
+> [!TIP]
+> If you want to build a GTDB database, jump to [Step 5 (alternative): Collect GTDB assemblies](#step-5-alternative-collect-gtdb-assemblies).
 
 ```bash
 ## download metadata file
@@ -159,13 +165,15 @@ for kingdom in ['archaea', 'bacteria']:
         with open('assembly/fna/' + kingdom + '.split.' + str(i) + '.id', 'w') as w:
             w.write('\n'.join(chunk) + '\n')
 
-print(f'#assemblies: {assembly.assembly.nunique()}, #species: {assembly.taxonomy.nunique()}')
+with open('assembly/info.tsv', 'w') as f:
+    f.write(f'species\t{assembly.taxonomy.nunique()}\n')
+    f.write(f'assemblies\t{assembly.assembly.nunique()}\n')
 "
 ```
 
 ### Step 5 (alternative): Collect GTDB assemblies
 > [!NOTE]
-> Some genomes (including representative genomes) may be deprecated by NCBI at the time of GTDB release. The representative ones can be downloaded from the FTP of GTDB (`genomic_files_reps/gtdb_genomes_reps.tar.gz`) and manually included. The other non-representative ones cannot be recovered.
+> Some genomes (including representative genomes) may be deprecated by NCBI at the time of GTDB release. The representative ones can be downloaded from the FTP of GTDB (`genomic_files_reps/gtdb_genomes_reps.tar.gz`) and manually included.
 
 ```bash
 ## download metadata files
@@ -175,8 +183,8 @@ wget -qN --show-progress https://ftp.ncbi.nlm.nih.gov/genomes/refseq/assembly_su
 wget -qN --show-progress https://ftp.ncbi.nlm.nih.gov/genomes/genbank/assembly_summary_genbank.txt -P assembly
 wget -qN --show-progress https://ftp.ncbi.nlm.nih.gov/genomes/genbank/assembly_summary_genbank_historical.txt -P assembly
 
-wget -qN --show-progress https://data.gtdb.ecogenomic.org/releases/latest/ar53_metadata.tsv.gz -P assembly
-wget -qN --show-progress https://data.gtdb.ecogenomic.org/releases/latest/bac120_metadata.tsv.gz -P assembly
+wget -qN --show-progress https://data.ace.uq.edu.au/public/gtdb/data/releases/latest/ar53_metadata.tsv.gz -P assembly
+wget -qN --show-progress https://data.ace.uq.edu.au/public/gtdb/data/releases/latest/bac120_metadata.tsv.gz -P assembly
 
 gzip -d assembly/ar53_metadata.tsv.gz
 gzip -d assembly/bac120_metadata.tsv.gz
@@ -223,30 +231,30 @@ for kingdom in ['archaea', 'bacteria']:
         with open('assembly/fna/' + kingdom + '.split.' + str(i) + '.id', 'w') as w:
             w.write('\n'.join(chunk) + '\n')
 
-deprecated = (assembly.ftp_path == 'na') | (assembly.ftp_path.isnull())
-print(f'#species: {assembly.taxonomy.nunique()}')
-print(f'#assemblies: {assembly.assembly.nunique()}')
-print(f'#deprecated_reps: {len(assembly[deprecated])}')
+with open('assembly/info.tsv', 'w') as f:
+    f.write(f'species\t{assembly.taxonomy.nunique()}\n')
+    f.write(f'assemblies\t{assembly.assembly.nunique()}\n')
+    f.write(f'deprecated_reps\t{len(assembly[(assembly.ftp_path == 'na') | (assembly.ftp_path.isnull())])}\n')
 "
 
-# ## grab representative genomes if necessary
-# wget -qN --show-progress https://data.gtdb.ecogenomic.org/releases/latest/genomic_files_reps/gtdb_genomes_reps.tar.gz
-# tar -xvf gtdb_genomes_reps.tar.gz
+## grab representative genomes if necessary
+wget -qN --show-progress https://data.ace.uq.edu.au/public/gtdb/data/releases/latest/genomic_files_reps/gtdb_genomes_reps.tar.gz
+tar -xvf gtdb_genomes_reps.tar.gz
 
-# python -c "
-# import pandas as pd
-# import glob
-# import os
-# import shutil
-# dset = set(pd.read_table('assembly/deprecated.tsv').assembly)
-# files = glob.glob('gtdb_genomes_reps/**/*.fna.gz', recursive=True)
-# files = [file for file in files if os.path.basename(file).rsplit('_genomic')[0] in dset]
-# os.makedirs('assembly/fna/deprecated_reps', exist_ok=True)
-# for file in files:
-#     shutil.copy(file, f'assembly/fna/deprecated_reps/{os.path.basename(file)}')
-# "
-# 
-# cat assembly/fna/deprecated_reps/*.fna.gz > assembly/fna/deprecated_reps.fna.gz
+python -c "
+import pandas as pd
+import glob
+import os
+import shutil
+dset = set(pd.read_table('assembly/deprecated.tsv').assembly)
+files = glob.glob('gtdb_genomes_reps*/**/*.fna.gz', recursive=True)
+files = [file for file in files if os.path.basename(file).rsplit('_genomic')[0] in dset]
+os.makedirs('assembly/fna/deprecated_reps', exist_ok=True)
+for file in files:
+    shutil.copy(file, f'assembly/fna/deprecated_reps/{os.path.basename(file)}')
+"
+
+cat assembly/fna/deprecated_reps/*.fna.gz > assembly/fna/deprecated_reps.fna.gz
 ```
 
 ### Step 6: Download assemblies and generate an accession2assembly mapping
@@ -280,21 +288,11 @@ pd.DataFrame([
 ```
 
 ## Construction of the protein database
-### Step 1: Extract protein sequences from BLAST databases
-The detailed taxonomic information of `env_nr` is not available, we therefore create a diamond database using the full `nr`, and later assign bacteria/archaea labels to `env_nr` using LCA.
-
-> [!NOTE]
-> Extracting sequences and building diamond database can take a while. To speed up, consider running each `blastdbcmd` block in parallel.
+### Step 1: Extract protein sequences
+> [!TIP]
+> Extracting sequences and building database can take a while. To speed up, consider running each `blastdbcmd` block in parallel.
 
 ```bash
-## env_nr
-blastdbcmd -db protein/env_nr/env_nr -entry all > protein/env_nr.full.fa
-
-## make a diamond database using full nr
-blastdbcmd -db protein/nr/nr -entry all > protein/nr.full.fa
-diamond makedb --in protein/nr.full.fa --db protein/nr.full --taxonmap taxonomy/prot.accession2taxid.FULL.gz --taxonnodes taxonomy/nodes.dmp --taxonnames taxonomy/names.dmp
-rm -rf protein/nr.full.fa
-
 ## extract bacteria/archaea sequences from nr
 for kingdom in archaea bacteria
 do
@@ -326,7 +324,7 @@ with open('protein/nr.shared.id', 'w') as w:
 ```
 
 ### Step 2: Re-annotate protein sequences
-Annotating against the full KEGG profile HMMs will take days, so we first use a subset of prokaryotic profile HMMs (91 ribosomal protein profile HMMs) to get a candidate subset of sequences, then use the full profile HMMs to get the complete annotations.
+Annotating sequences against the full KEGG profile HMMs will take days, so we first use a subset of prokaryotic profile HMMs (91 ribosomal protein HMMs) to get a candidate subset of sequences, then use the full profile HMMs to generate the complete annotations.
 
 ```bash
 mkdir -p prot/out/prokaryote.subset
@@ -381,8 +379,8 @@ for file in tqdm(glob.glob('prot/out/prokaryote.subset/*.hmm')):
                 if ls[0] not in shared_accession:
                     ks = ko.get(ls[3])
                     if (
-                        ks['score_type'] == 'full' and float(ls[7]) > float(ks['threshold']) * 0.75 or
-                        ks['score_type'] == 'domain' and float(ls[13]) > float(ks['threshold']) * 0.75
+                        ks['score_type'] == 'full' and float(ls[7]) > float(ks['threshold']) or
+                        ks['score_type'] == 'domain' and float(ls[13]) > float(ks['threshold'])
                     ):
                         accession[filename].add(ls[0])
 
@@ -392,41 +390,6 @@ for key, val in accession.items():
             'seqkit', 'grep', '-f', '-', 'protein/{}.fa'.format(key)
         ], check=True, text=True, input='\n'.join(val) + '\n', stdout=w)
 "
-```
-
-Run `diamond` LCA to `env_nr` then extract sequences with matched kingdom.
-
-```bash
-diamond blastp \
-    --db protein/nr.full.dmnd \
-    --query prot/out/env_nr.full.fa \
-    --outfmt 102 \
-    --top 0 \
-    --threads 64 \
-    | taxonkit reformat \
-        --data-dir taxonomy \
-        --taxid-field 2 \
-        --format "{k}" > prot/out/env_nr.full.id
-
-python -c "
-import subprocess
-from collections import defaultdict
-
-accession = defaultdict(set)
-with open('prot/out/env_nr.full.id') as f:
-    for line in f:
-        ls = line.split()
-        if len(ls) == 4 and ls[-1] in {'Bacteria', 'Archaea'}:
-            accession['env_nr.' + ls[-1].lower()].add(ls[0])
-
-for key, val in accession.items():
-    with open('prot/out/{}.fa'.format(key), 'w') as w:
-        subprocess.run([
-            'seqkit', 'grep', '-f', '-', 'prot/out/env_nr.full.fa'
-        ], check=True, text=True, input='\n'.join(val) + '\n', stdout=w)
-"
-
-rm -rf prot/out/env_nr.full.*
 ```
 
 Rerun `hmmsearch` but against the full set of prokaryotic profile HMMs.
@@ -455,6 +418,7 @@ Parse domain output files of `hmmsearch`, select only sequences that pass the pr
 mkdir -p prot/seq
 
 python -c "
+import os
 import glob
 import pandas as pd
 from collections import defaultdict
@@ -468,17 +432,14 @@ def parse_file(file):
                 ls = line.rstrip().split(maxsplit=22)
                 if (ks := ko.get(ls[3])) is not None:
                     if (
-                        ks['score_type'] == 'full' and float(ls[7]) > float(ks['threshold']) * 0.75 or
-                        ks['score_type'] == 'domain' and float(ls[13]) > float(ks['threshold']) * 0.75
+                        ks['score_type'] == 'full' and float(ls[7]) > float(ks['threshold']) or
+                        ks['score_type'] == 'domain' and float(ls[13]) > float(ks['threshold'])
                     ):
                         lines.append([ls[0], ls[3], ks['definition'], int(ls[17]), int(ls[18]), int(ls[2]), float(ls[21])])
     return lines
 
 ## read pre-defined threshold score for each ko
-ko_subset = set()
-with open('profile/prokaryote.subset.id') as f:
-    for line in f:
-        ko_subset.add(line.split()[0])
+ko_subset = {os.path.basename(file).split('.hmm')[0] for file in glob.glob('profile/prokaryote.subset/*.hmm')}
 
 ko = defaultdict(dict)
 with open('profile/ko_list') as f:
@@ -489,37 +450,37 @@ with open('profile/ko_list') as f:
             ko[ls[0]]['threshold'], ko[ls[0]]['score_type'] = ls[1:3]
             ko[ls[0]]['definition'] = ls[-1].split('protein ')[-1].lower() if ls[0] in ko_subset else 'others'
 
-for source in ['env_nr', 'nr']:
-    for kingdom in ['bacteria', 'archaea']:
-        domain = pd.DataFrame([
-            x for y in process_map(parse_file, glob.glob('prot/out/prokaryote.full/{}.{}.*'.format(source, kingdom)), max_workers=64, chunksize=1) for x in y
-        ], columns=['accession', 'knum', 'definition', 'tstart', 'tend', 'tlen', 'acc'])
-        domain['tcov'] = (domain['tend'] - domain['tstart'] + 1) / domain['tlen']
+source = 'nr'
+for kingdom in ['bacteria', 'archaea']:
+    domain = pd.DataFrame([
+        x for y in process_map(parse_file, glob.glob('prot/out/prokaryote.full/{}.{}.*'.format(source, kingdom)), max_workers=64, chunksize=1) for x in y
+    ], columns=['accession', 'knum', 'definition', 'tstart', 'tend', 'tlen', 'acc'])
+    domain['tcov'] = (domain['tend'] - domain['tstart'] + 1) / domain['tlen']
 
-        ## remove low quality and invalid sequences
-        domain = domain[
-            (domain.groupby('accession')['knum'].transform('nunique') == 1) &
-            (domain['definition'] != 'others') &
-            (domain['tcov'] > 0.75)
-        ].sort_values(['accession', 'tcov'], ascending=False).groupby('accession', as_index=False).first()
+    ## remove low quality and invalid sequences
+    domain = domain[
+        (domain.groupby('accession')['knum'].transform('nunique') == 1) &
+        (domain['definition'] != 'others') &
+        (domain['tcov'] > 0.75)
+    ].sort_values(['accession', 'tcov'], ascending=False).groupby('accession', as_index=False).first()
 
-        ## create a accession2description mapping
-        domain['description'] = domain['definition'] + '-tcov:' + domain['tcov'].map('{:.2f}'.format) + '-acc:' + domain['acc'].map('{:.2f}'.format) + '-' + source + '-' + kingdom
-        accession2description = domain.set_index('accession')['description'].to_dict()
+    ## create a accession2description mapping
+    domain['description'] = domain['definition'] + '-tcov:' + domain['tcov'].map('{:.2f}'.format) + '-acc:' + domain['acc'].map('{:.2f}'.format) + '-' + source + '-' + kingdom
+    accession2description = domain.set_index('accession')['description'].to_dict()
 
-        ## save filtered sequences
-        with open('prot/seq/{}.{}.fa'.format(source, kingdom), 'w') as w, open('prot/out/{}.{}.fa'.format(source, kingdom)) as f:
-            for line in f:
-                if line[0] == '>':
-                    accession = line[1:].split()[0]
-                    if (description := accession2description.get(accession)) is not None and ', partial' not in line:
-                        w.write('>' + description + '-' + accession + '\n')
-                        save = True
-                        continue
-                    else:
-                        save = False
-                if save:
-                    w.write(line)
+    ## save filtered sequences
+    with open('prot/seq/{}.{}.fa'.format(source, kingdom), 'w') as w, open('prot/out/{}.{}.fa'.format(source, kingdom)) as f:
+        for line in f:
+            if line[0] == '>':
+                accession = line[1:].split()[0]
+                if (description := accession2description.get(accession)) is not None and ', partial' not in line:
+                    w.write('>' + description + '-' + accession + '\n')
+                    save = True
+                    continue
+                else:
+                    save = False
+            if save:
+                w.write(line)
 "
 ```
 
@@ -547,8 +508,8 @@ for key, val in sequence.items():
 "
 ```
 
-> [!NOTE]
-> If your are working on HPC, please consider submitting a SLURM job for each `mmseqs` to make them run in parallel, and increase `--threads` to reduce the computational time.
+> [!TIP]
+> If you are working on an HPC, submit a SLURM job for each `mmseqs` process to run them in parallel, and increase `--threads` to reduce computational time. Lower `-P` if you encounter memory issues.
 
 ```bash
 mkdir -p prot/clustered
@@ -565,7 +526,7 @@ ls prot/raw/*.fa | sort | xargs -P 8 -I {} bash -c '
         -s 7.5 --cluster-reassign --threads $THREADS -v 0 > /dev/null' - {}
 ```
 
-Merge all clustered files to get the final protein database.
+Merge all clustered files to get the protein database.
 
 ```bash
 cat prot/clustered/*rep_seq.fasta | seqkit sort | seqkit shuffle -s 0 > prot/clustered.fa
@@ -574,8 +535,8 @@ python -c "
 import subprocess
 from collections import defaultdict
 
-archaea = {'l2', 'l11', 'l10e', 'l15e', 'l18e', 's3ae', 's19e', 's28e'}
-bacteria = {'l2', 'l11', 'l20', 'l27', 's2', 's7', 's9', 's16'}
+archaea = {'l4e', 'l11', 'l10e', 'l15e', 'l44e', 's3ae', 's19e', 's24e'}
+bacteria = {'l2', 'l11', 'l13', 'l20', 'l27', 's2', 's7', 's16'}
 
 with open('prot/prot.fa', 'w') as w, open('prot/clustered.fa') as f:
     for line in f:
@@ -591,8 +552,8 @@ with open('prot/prot.fa', 'w') as w, open('prot/clustered.fa') as f:
 
 ## Construction of the nucleotide database
 ### Step 1: Map assemblies to the protein databases
-> [!NOTE]
-> This step will take a while to finish. If you are working on HPC, please submit a SLURM job for each `*.fna.gz` file and increase `--threads` to reduce computational time. If not, combining all `*.fna.gz` files into a single one then running `diamond` with tuned `-b -c` may help to speed up.
+> [!TIP]
+> This step will take a while to complete. If you are working on HPC, submit a separate SLURM job for each `*.fna.gz` file and increase `--threads` to reduce computational time. If not, combining all `*.fna.gz` files into a single one then running `diamond` with tuned `-b -c` may help to speed up.
 
 ```bash
 mkdir -p nucl/out
@@ -606,7 +567,7 @@ find assembly/fna -maxdepth 1 -name '*.fna.gz' | sort | xargs -P 8 -I {} bash -c
         --query $1 \
         --out nucl/out/${filename}.txt \
         --outfmt 6 qseqid sseqid pident length qlen qstart qend slen sstart send evalue bitscore \
-        --evalue 1e-15 --subject-cover 75 \
+        --evalue 1e-25 --subject-cover 75 \
         --range-culling --frameshift 15 --range-cover 25 \
         --max-hsps 0 --max-target-seqs 25 \
         --threads 8 --quiet' - {}
@@ -675,7 +636,7 @@ process_map(extract_sequence, glob.glob('assembly/fna/*.fna.gz'), max_workers=64
 ```
 
 ### Step 3: Cluster to remove duplicated sequences
-Create a file for each species-gene combo.
+Create a file for each species-gene combination.
 
 ```bash
 mkdir -p nucl/raw
@@ -685,8 +646,8 @@ python -c "
 import pandas as pd
 from collections import defaultdict
 
-archaea = {'l2', 'l11', 'l10e', 'l15e', 'l18e', 's3ae', 's19e', 's28e'}
-bacteria = {'l2', 'l11', 'l20', 'l27', 's2', 's7', 's9', 's16'}
+archaea = {'l4e', 'l11', 'l10e', 'l15e', 'l44e', 's3ae', 's19e', 's24e'}
+bacteria = {'l2', 'l11', 'l13', 'l20', 'l27', 's2', 's7', 's16'}
 
 assembly2species = {}
 with open('assembly/assembly2species.tsv') as f:
@@ -739,8 +700,8 @@ pd.DataFrame([
 "
 ```
 
-> [!NOTE]
-> If your are working on HPC, please consider submitting a SLURM job for each `mmseqs` to make them run in parallel, and increase `--threads` to reduce the computational time. Lower `-P` if you encounter memory issues.
+> [!TIP]
+> If you are working on HPC, submit a SLURM job for each `mmseqs` process to run them in parallel, and increase `--threads` to reduce computational time. Lower `-P` if you encounter memory issues.
 
 ```bash
 mkdir -p nucl/clustered
@@ -786,12 +747,13 @@ metadata[metadata.accession.isin(accession)].to_csv('nucl/metadata.tsv', index=F
 "
 ```
 
-## Add non-prokaryotic sequences as decoys
+## (optional) Add non-prokaryotic sequences as decoys
 ### Step 1: Download RefSeq non-prokaryotic protein sequences
-Download RefSeq fungi, protozoa, viral, plant, and human GRCh38/hg38 (Kraken2's PlusPFP equivalent).
+Download RefSeq fungi, protozoa, viral, plant, and human GRCh38/hg38 (`Kraken2`'s PlusPFP equivalent).
 
 ```bash
 mkdir -p plus/faa
+
 python -c "
 import pandas as pd
 
@@ -825,14 +787,13 @@ find plus/faa -maxdepth 1 -name '*.id' | xargs -P 32 -I {} bash -c '
 Annotate sequences using the selected marker HMMs.
 
 ```bash
-mkdir -p plus/out
+mkdir -p plus/profile plus/out
 python -c "
 from collections import defaultdict
-import os
 import shutil
-os.makedirs('plus/profile', exist_ok=True)
-archaea = {'l2', 'l11', 'l10e', 'l15e', 'l18e', 's3ae', 's19e', 's28e'}
-bacteria = {'l2', 'l11', 'l20', 'l27', 's2', 's7', 's9', 's16'}
+
+archaea = {'l4e', 'l11', 'l10e', 'l15e', 'l44e', 's3ae', 's19e', 's24e'}
+bacteria = {'l2', 'l11', 'l13', 'l20', 'l27', 's2', 's7', 's16'}
 
 ko = []
 with open('profile/ko_list') as f:
@@ -880,8 +841,8 @@ def parse_file(file):
                 ls = line.rstrip().split(maxsplit=22)
                 if (ks := ko.get(ls[3])) is not None:
                     if (
-                        ks['score_type'] == 'full' and float(ls[7]) > float(ks['threshold']) * .75 or
-                        ks['score_type'] == 'domain' and float(ls[13]) > float(ks['threshold']) * .75
+                        ks['score_type'] == 'full' and float(ls[7]) > float(ks['threshold']) or
+                        ks['score_type'] == 'domain' and float(ls[13]) > float(ks['threshold'])
                     ):
                         lines.append([ls[0], ls[3], ks['definition'], int(ls[17]), int(ls[18]), int(ls[2]), float(ls[21])] + [file.split('/')[-1].split('.')[0]])
     return lines
@@ -931,9 +892,9 @@ Cluster to remove redundant sequences.
 
 ```bash
 mmseqs easy-cluster \
-        plus/plus.fa plus/plus plus/plus \
-        -c 0.95 --min-seq-id 0.95 --cov-mode 0 \
-        -s 7.5 --cluster-reassign --threads 64 -v 0
+    plus/plus.fa plus/plus plus/plus \
+    -c 0.95 --min-seq-id 0.95 --cov-mode 0 \
+    -s 7.5 --cluster-reassign --threads 64 -v 0 > /dev/null
 ```
 
 ## Compress

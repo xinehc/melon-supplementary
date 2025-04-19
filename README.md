@@ -25,7 +25,7 @@ Instruction on building the NCBI/GTBD database of Melon.
 ## Prerequisite
 ### Step 1: Install necessary packages
 ```bash
-conda install -c bioconda -c conda-forge 'taxonkit>=0.15.1' 'seqkit>=2.6.1' 'hmmer>=3.4' 'mmseqs2>=15.6f452' 'blast>=2.15.0' 'diamond>=2.1.11' 'tqdm' 'pandas'
+conda install -c bioconda -c conda-forge 'taxonkit>=0.15.1' 'seqkit>=2.6.1' 'hmmer>=3.4' 'mmseqs2>=15.6f452' 'blast>=2.15.0' 'diamond>=2.1.11' 'tqdm' 'pandas' 'request'
 ```
 
 ### Step 2: Download protein sequences from https://ftp.ncbi.nlm.nih.gov/blast/db/
@@ -73,9 +73,11 @@ mkdir -p profile/prokaryote.full profile/prokaryote.subset
 
 python -c "
 import shutil
+import requests
 
-archaea = {'l2', 'l11', 'l10e', 'l15e', 'l18e', 's3ae', 's19e', 's28e'}
-bacteria = {'l2', 'l11', 'l20', 'l27', 's2', 's7', 's9', 's16'}
+## https://www.genome.jp/brite/ko03011
+## https://www.genome.jp/kegg/annotation/br01610.html
+response = requests.get('https://www.genome.jp/kegg-bin/download_htext?htext=ko03011.keg&format=htext&filedir=')
 
 ko_full = set()
 with open('profile/profiles/prokaryote.hal') as f:
@@ -83,13 +85,18 @@ with open('profile/profiles/prokaryote.hal') as f:
         ko_full.add(line.rstrip().split('.hmm')[0])
 
 ko_subset = set()
-with open('profile/ko_list') as f:
-    next(f)
-    for line in f:
-        ls = line.rstrip().split('\t')
-        gene = ls[-1].split('ribosomal protein ')[-1].lower()
-        if ls[2] != '-' and gene in archaea | bacteria:
-            ko_subset.add(ls[0])
+for line in response.text.rstrip().split('\n'):
+    if line:
+        ls = line.split()
+        if ls[0] == 'B':
+            if ls[1] in {'Bacteria', 'Archaea'}:
+                kingdom = ls[1].lower()
+            else:
+                kingdom = None
+
+        if ls[0] == 'D' and kingdom is not None:
+            if ls[1] not in {'K19032', 'K19033'}: # skip these two not in <Ribosomal protein gene clusters in prokaryotes>
+                ko_subset.add(ls[1])
 
 for ko in ko_subset:
     shutil.copy(f'profile/profiles/{ko}.hmm', f'profile/prokaryote.subset/{ko}.hmm')

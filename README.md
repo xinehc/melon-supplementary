@@ -70,35 +70,30 @@ tar -xvf profile/profiles.tar.gz -C profile
 
 ## collect ribosomal protein ko
 mkdir -p profile/prokaryote.full profile/prokaryote.subset
+
 python -c "
-import requests
 import shutil
+
+archaea = {'l2', 'l11', 'l10e', 'l15e', 'l18e', 's3ae', 's19e', 's28e'}
+bacteria = {'l2', 'l11', 'l20', 'l27', 's2', 's7', 's9', 's16'}
 
 ko_full = set()
 with open('profile/profiles/prokaryote.hal') as f:
     for line in f:
         ko_full.add(line.rstrip().split('.hmm')[0])
 
-## https://www.genome.jp/brite/ko03011
-## https://www.genome.jp/kegg/annotation/br01610.html
-response = requests.get('https://www.genome.jp/kegg-bin/download_htext?htext=ko03011.keg&format=htext&filedir=')
-
 ko_subset = set()
-for line in response.text.rstrip().split('\n'):
-    if line:
-        ls = line.split()
-        if ls[0] == 'B':
-            if ls[1] in {'Bacteria', 'Archaea'}:
-                kingdom = ls[1].lower()
-            else:
-                kingdom = None
-
-        if ls[0] == 'D' and kingdom is not None:
-            if ls[1] not in {'K19032', 'K19033'}: # skip these two not in <Ribosomal protein gene clusters in prokaryotes>
-                ko_subset.add(ls[1])
+with open('profile/ko_list') as f:
+    next(f)
+    for line in f:
+        ls = line.rstrip().split('\t')
+        gene = ls[-1].split('ribosomal protein ')[-1].lower()
+        if ls[2] != '-' and gene in archaea | bacteria:
+            ko_subset.add(ls[0])
 
 for ko in ko_subset:
     shutil.copy(f'profile/profiles/{ko}.hmm', f'profile/prokaryote.subset/{ko}.hmm')
+
 
 for ko in ko_full:
     shutil.copy(f'profile/profiles/{ko}.hmm', f'profile/prokaryote.full/{ko}.hmm')
@@ -752,6 +747,7 @@ Download RefSeq fungi, protozoa, viral, plant, and human GRCh38/hg38 (`Kraken2`'
 
 ```bash
 mkdir -p plus/faa
+
 python -c "
 import pandas as pd
 
@@ -786,38 +782,19 @@ Annotate sequences using the selected marker HMMs.
 
 ```bash
 mkdir -p plus/profile plus/out
-python -c "
-from collections import defaultdict
-import shutil
-
-archaea = {'l2', 'l11', 'l10e', 'l15e', 'l18e', 's3ae', 's19e', 's28e'}
-bacteria = {'l2', 'l11', 'l20', 'l27', 's2', 's7', 's9', 's16'}
-
-ko = []
-with open('profile/ko_list') as f:
-    next(f)
-    for line in f:
-        ls = line.rstrip().split('\t')
-        gene = ls[-1].split('ribosomal protein ')[-1].lower()
-        if ls[2] != '-' and gene in archaea | bacteria:
-            ko.append(ls[0])
-
-for i in ko:
-    shutil.copy(f'profile/profiles/{i}.hmm', f'plus/profile/{i}.hmm')
-"
 
 for file in plus/faa/*.faa
 do
     filename=${file%.faa}
     filename=${filename##*/}
 
-    ls plus/profile \
+    ls profile/prokaryote.subset \
     | xargs -P 8 -I {} hmmsearch \
         --domtblout plus/out/$filename.{} \
         -E 2147483647 --domE 2147483647 \
         --noali \
         --cpu 8 \
-        plus/profile/{} $file > /dev/null
+        profile/prokaryote.subset/{} $file > /dev/null
 done
 ```
 

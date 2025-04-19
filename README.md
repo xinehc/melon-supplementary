@@ -9,7 +9,7 @@ Instruction on building the NCBI/GTBD database of Melon.
   - [Step 5 (alternative): Collect GTDB assemblies](#step-5-alternative-collect-gtdb-assemblies)
   - [Step 6: Download assemblies and generate an accession2assembly mapping](#step-6-download-assemblies-and-generate-an-accession2assembly-mapping)
 - [Construction of the protein database](#construction-of-the-protein-database)
-  - [Step 1: Extract protein sequences from BLAST databases](#step-1-extract-protein-sequences-from-blast-databases)
+  - [Step 1: Extract protein sequences](#step-1-extract-protein-sequences)
   - [Step 2: Re-annotate protein sequences](#step-2-re-annotate-protein-sequences)
   - [Step 3: Cluster to reduce redundancy](#step-3-cluster-to-reduce-redundancy)
 - [Construction of the nucleotide database](#construction-of-the-nucleotide-database)
@@ -282,7 +282,7 @@ pd.DataFrame([
 ```
 
 ## Construction of the protein database
-### Step 1: Extract protein sequences from BLAST databases
+### Step 1: Extract protein sequences
 > [!TIP]
 > Extracting sequences and building database can take a while. To speed up, consider running each `blastdbcmd` block in parallel.
 

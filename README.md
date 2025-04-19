@@ -59,12 +59,12 @@ taxonkit list --ids 2157 --indent '' --data-dir taxonomy > taxonomy/archaea.id
 
 ### Step 4: Download profile HMMs from https://www.genome.jp/ftp/db/kofam/
 > [!NOTE]
-> We validated ver. 2023-04-01 using RefSeq proteins. Using other versions, including the latest version is also OK but profiles of specific marker genes may not function well.
+> We validated ver. 2025-01-01 using RefSeq proteins. Using other versions, including the latest version is also OK but profiles of specific marker genes may not function well.
 
 ```bash
 ## download profiles and ko metadata
-wget -qN --show-progress https://www.genome.jp/ftp/db/kofam/archives/2023-04-01/ko_list.gz -P profile
-wget -qN --show-progress https://www.genome.jp/ftp/db/kofam/archives/2023-04-01/profiles.tar.gz -P profile
+wget -qN --show-progress https://www.genome.jp/ftp/db/kofam/archives/2025-01-01/ko_list.gz -P profile
+wget -qN --show-progress https://www.genome.jp/ftp/db/kofam/archives/2025-01-01/profiles.tar.gz -P profile
 gzip -d profile/ko_list.gz
 tar -xvf profile/profiles.tar.gz -C profile
 
@@ -379,8 +379,8 @@ for file in tqdm(glob.glob('prot/out/prokaryote.subset/*.hmm')):
                 if ls[0] not in shared_accession:
                     ks = ko.get(ls[3])
                     if (
-                        ks['score_type'] == 'full' and float(ls[7]) > float(ks['threshold']) * 0.75 or
-                        ks['score_type'] == 'domain' and float(ls[13]) > float(ks['threshold']) * 0.75
+                        ks['score_type'] == 'full' and float(ls[7]) > float(ks['threshold']) or
+                        ks['score_type'] == 'domain' and float(ls[13]) > float(ks['threshold'])
                     ):
                         accession[filename].add(ls[0])
 
@@ -432,8 +432,8 @@ def parse_file(file):
                 ls = line.rstrip().split(maxsplit=22)
                 if (ks := ko.get(ls[3])) is not None:
                     if (
-                        ks['score_type'] == 'full' and float(ls[7]) > float(ks['threshold']) * 0.75 or
-                        ks['score_type'] == 'domain' and float(ls[13]) > float(ks['threshold']) * 0.75
+                        ks['score_type'] == 'full' and float(ls[7]) > float(ks['threshold']) or
+                        ks['score_type'] == 'domain' and float(ls[13]) > float(ks['threshold'])
                     ):
                         lines.append([ls[0], ls[3], ks['definition'], int(ls[17]), int(ls[18]), int(ls[2]), float(ls[21])])
     return lines
@@ -822,8 +822,8 @@ def parse_file(file):
                 ls = line.rstrip().split(maxsplit=22)
                 if (ks := ko.get(ls[3])) is not None:
                     if (
-                        ks['score_type'] == 'full' and float(ls[7]) > float(ks['threshold']) * 0.75 or
-                        ks['score_type'] == 'domain' and float(ls[13]) > float(ks['threshold']) * 0.75
+                        ks['score_type'] == 'full' and float(ls[7]) > float(ks['threshold']) or
+                        ks['score_type'] == 'domain' and float(ls[13]) > float(ks['threshold'])
                     ):
                         lines.append([ls[0], ls[3], ks['definition'], int(ls[17]), int(ls[18]), int(ls[2]), float(ls[21])] + [file.split('/')[-1].split('.')[0]])
     return lines

@@ -25,7 +25,7 @@ Instruction on building the NCBI/GTBD database of Melon.
 ## Prerequisite
 ### Step 1: Install necessary packages
 ```bash
-conda install -c bioconda -c conda-forge 'taxonkit>=0.15.1' 'seqkit>=2.6.1' 'hmmer>=3.4' 'mmseqs2>=15.6f452' 'blast>=2.15.0' 'diamond>=2.1.11' 'tqdm' 'pandas' 'requests'
+conda install -c bioconda -c conda-forge 'taxonkit>=0.15.1' 'seqkit>=2.6.1' 'hmmer>=3.4' 'mmseqs2>=15.6f452' 'blast>=2.15.0' 'diamond>=2.1.11' 'tqdm' 'pandas'
 ```
 
 ### Step 2: Download protein sequences from https://ftp.ncbi.nlm.nih.gov/blast/db/
@@ -93,7 +93,6 @@ with open('profile/ko_list') as f:
 
 for ko in ko_subset:
     shutil.copy(f'profile/profiles/{ko}.hmm', f'profile/prokaryote.subset/{ko}.hmm')
-
 
 for ko in ko_full:
     shutil.copy(f'profile/profiles/{ko}.hmm', f'profile/prokaryote.full/{ko}.hmm')

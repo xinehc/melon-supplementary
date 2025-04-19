@@ -788,19 +788,41 @@ Annotate sequences using the selected marker HMMs.
 
 ```bash
 mkdir -p plus/profile plus/out
+python -c "
+from collections import defaultdict
+import shutil
+
+genes = set()
+with open('prot/prot.fa') as f:
+    for line in f:
+        if line[0] == '>':
+            genes.add(line[1:].split('-')[0])
+
+ko = []
+with open('profile/ko_list') as f:
+    next(f)
+    for line in f:
+        ls = line.rstrip().split('\t')
+        gene = ls[-1].split('ribosomal protein ')[-1].lower()
+        if ls[2] != '-' and gene in genes:
+            ko.append(ls[0])
+
+for i in ko:
+    shutil.copy(f'profile/profiles/{i}.hmm', f'plus/profile/{i}.hmm')
+"
 
 for file in plus/faa/*.faa
 do
     filename=${file%.faa}
     filename=${filename##*/}
 
-    ls profile/prokaryote.subset \
+    ls plus/profile \
     | xargs -P 8 -I {} hmmsearch \
         --domtblout plus/out/$filename.{} \
         -E 2147483647 --domE 2147483647 \
         --noali \
         --cpu 8 \
-        profile/prokaryote.subset/{} $file > /dev/null
+        plus/profile/{} $file > /dev/null
 done
 ```
 

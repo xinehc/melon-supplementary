@@ -166,7 +166,7 @@ for kingdom in ['archaea', 'bacteria']:
             w.write('\n'.join(chunk) + '\n')
 
 with open('assembly/info.tsv', 'w') as f:
-    f.write(f'species\t{assembly.taxonomy.nunique()}\n'
+    f.write(f'species\t{assembly.taxonomy.nunique()}\n')
     f.write(f'assemblies\t{assembly.assembly.nunique()}\n')
 "
 ```

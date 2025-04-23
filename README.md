@@ -25,7 +25,7 @@ Instruction on building the NCBI/GTBD database of Melon.
 ## Prerequisite
 ### Step 1: Install necessary packages
 ```bash
-conda install -c bioconda -c conda-forge 'taxonkit>=0.15.1' 'seqkit>=2.6.1' 'hmmer>=3.4' 'mmseqs2>=15.6f452' 'blast>=2.15.0' 'diamond>=2.1.11' 'tqdm' 'pandas' 'requests'
+conda install -c bioconda -c conda-forge 'taxonkit>=0.19.0' 'seqkit>=2.10.0' 'hmmer>=3.4' 'mmseqs2>=17.b804f' 'blast>=2.16.0' 'diamond>=2.1.11' 'tqdm' 'pandas' 'requests'
 ```
 
 ### Step 2: Download protein sequences from https://ftp.ncbi.nlm.nih.gov/blast/db/
@@ -122,22 +122,21 @@ import subprocess
 
 def get_taxonomy(taxid, data_dir='taxonomy'):
     output = subprocess.run([
-        'taxonkit', 'reformat',
+        'taxonkit', 'reformat2',
         '--data-dir', data_dir,
         '--taxid-field', '1',
         '--show-lineage-taxids',
-        '--fill-miss-rank',
         '--miss-taxid-repl', '0',
         '--miss-rank-repl', 'unclassified',
         '--trim',
-        '-f', '{k}\t{p}\t{c}\t{o}\t{f}\t{g}\t{s}'],
+        '--format', '{domain|superkingdom};{phylum};{class};{order};{family};{genus};{species}'],
         input='\n'.join(taxid)+'\n', text=True, capture_output=True, check=True)
     print(output.stderr)
 
     taxonomy = {}
     for line in output.stdout.rstrip().split('\n'):
         ls = line.rstrip().split('\t')
-        taxonomy[int(ls[0])] = ';'.join([ls[i+7] + '|' + ls[i] for i in range(1, len(ls)-7)])
+        taxonomy[int(ls[0])] = ';'.join(f'{y}|{x}' for x, y in zip(ls[1].split(';'), ls[2].split(';')))
 
     return taxonomy
 

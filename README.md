@@ -245,6 +245,7 @@ import pandas as pd
 import glob
 import os
 import shutil
+
 dset = set(pd.read_table('assembly/deprecated.tsv').assembly)
 files = glob.glob('gtdb_genomes_reps*/**/*.fna.gz', recursive=True)
 files = [file for file in files if os.path.basename(file).rsplit('_genomic')[0] in dset]

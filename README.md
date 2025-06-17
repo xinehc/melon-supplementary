@@ -300,7 +300,7 @@ do
     blastdbcmd -db protein/nr/nr -target_only -taxidlist taxonomy/${kingdom}.id -outfmt '%a@%o' > protein/nr.${kingdom}.id # accession@oid
 done
 
-## find shared sequences by original id (oid)
+## find shared sequences by ordinal id (oid)
 python -c "
 from collections import defaultdict
 

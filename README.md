@@ -75,28 +75,37 @@ python -c "
 import shutil
 import requests
 
-## https://www.genome.jp/brite/ko03011
-## https://www.genome.jp/kegg/annotation/br01610.html
-response = requests.get('https://www.genome.jp/kegg-bin/download_htext?htext=ko03011.keg&format=htext&filedir=')
-
 ko_full = set()
 with open('profile/profiles/prokaryote.hal') as f:
     for line in f:
         ko_full.add(line.rstrip().split('.hmm')[0])
 
-ko_subset = set()
-for line in response.text.rstrip().split('\n'):
-    if line:
-        ls = line.split()
-        if ls[0] == 'B':
-            if ls[1] in {'Bacteria', 'Archaea'}:
-                kingdom = ls[1].lower()
-            else:
-                kingdom = None
+# ko_subset = set()
+# response = requests.get('https://www.genome.jp/kegg-bin/download_htext?htext=ko03011.keg&format=htext&filedir=')
+# for line in response.text.rstrip().split('\n'):
+#     if line:
+#         ls = line.split()
+#         if ls[0] == 'B':
+#             if ls[1] in {'Bacteria', 'Archaea'}:
+#                 kingdom = ls[1].lower()
+#             else:
+#                 kingdom = None
+#
+#         if ls[0] == 'D' and kingdom is not None:
+#             if ls[1] not in {'K19032', 'K19033'}: # skip these two not in <Ribosomal protein gene clusters in prokaryotes>
+#                 ko_subset.add(ls[1])
 
-        if ls[0] == 'D' and kingdom is not None:
-            if ls[1] not in {'K19032', 'K19033'}: # skip these two not in <Ribosomal protein gene clusters in prokaryotes>
-                ko_subset.add(ls[1])
+archaea = {'l4e', 'l11', 'l10e', 'l15e', 'l44e', 's3ae', 's19e', 's24e'}
+bacteria = {'l2', 'l11', 'l13', 'l20', 'l27', 's2', 's7', 's16'}
+
+ko_subset = set()
+with open('profile/ko_list') as f:
+    next(f)
+    for line in f:
+        ls = line.rstrip().split('\t')
+        gene = ls[-1].split('ribosomal protein ')[-1].lower()
+        if ls[2] != '-' and gene in archaea | bacteria:
+            ko_subset.add(ls[0])
 
 for ko in ko_subset:
     shutil.copy(f'profile/profiles/{ko}.hmm', f'profile/prokaryote.subset/{ko}.hmm')
@@ -293,11 +302,11 @@ pd.DataFrame([
 > Extracting sequences and building database can take a while. To speed up, consider running each `blastdbcmd` block in parallel.
 
 ```bash
-## extract bacteria/archaea sequences from nr
+## extract bacteria/archaea sequences from nr, blastdbcmd on macOS requires ulimit -n 65536
 for kingdom in archaea bacteria
 do
     blastdbcmd -db protein/nr/nr -target_only -taxidlist taxonomy/${kingdom}.id > protein/nr.${kingdom}.fa
-    blastdbcmd -db protein/nr/nr -target_only -taxidlist taxonomy/${kingdom}.id -outfmt '%a@%o' > protein/nr.${kingdom}.id # accession@oid
+    blastdbcmd -db protein/nr/nr -target_only -taxidlist taxonomy/${kingdom}.id -outfmt '%a@%o' > protein/nr.${kingdom}.id
 done
 
 ## find shared sequences by ordinal id (oid)

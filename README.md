@@ -194,8 +194,8 @@ wget -qN --show-progress https://ftp.ncbi.nlm.nih.gov/genomes/genbank/assembly_s
 wget -qN --show-progress https://data.ace.uq.edu.au/public/gtdb/data/releases/latest/ar53_metadata.tsv.gz -P assembly
 wget -qN --show-progress https://data.ace.uq.edu.au/public/gtdb/data/releases/latest/bac120_metadata.tsv.gz -P assembly
 
-gzip -d assembly/ar53_metadata.tsv.gz
-gzip -d assembly/bac120_metadata.tsv.gz
+gzip --force -d assembly/ar53_metadata.tsv.gz
+gzip --force -d assembly/bac120_metadata.tsv.gz
 
 ## read metadata, split assemblies into chunks according to taxonomy
 python -c "

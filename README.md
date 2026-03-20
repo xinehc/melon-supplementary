@@ -38,7 +38,7 @@ source=nr
 curl ftp://ftp.ncbi.nlm.nih.gov/blast/db/ \
     | grep '[^ ]*.gz$' -o \
     | grep ^$source \
-    | xargs -P 32 -I {} wget -qN --show-progress https://ftp.ncbi.nlm.nih.gov/blast/db/{} -P protein/$source
+    | xargs -P 8 -I {} wget -qN --show-progress https://ftp.ncbi.nlm.nih.gov/blast/db/{} -P protein/$source
 
 ## decompress all files
 for file in protein/$source/*.tar.gz; do tar -xvf $file -C protein/$source; done
@@ -270,7 +270,7 @@ cat assembly/fna/deprecated_reps/*.fna.gz > assembly/fna/deprecated_reps.fna.gz
 
 ```bash
 ## download assemblies then cat
-find assembly/fna -maxdepth 1 -name '*.id' | xargs -P 32 -I {} bash -c '
+find assembly/fna -maxdepth 1 -name '*.id' | xargs -P 8 -I {} bash -c '
     wget -i ${1} -qN --show-progress -P ${1%.id}; \
     find ${1%.id} -maxdepth 1 -name "*.fna.gz" | xargs cat > ${1%.id}.fna.gz' - {}
 

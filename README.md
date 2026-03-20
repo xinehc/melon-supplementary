@@ -162,7 +162,7 @@ assembly['index'] = pd.Categorical(assembly['taxonomy'], ordered=False).codes + 
 assembly[['assembly', 'taxonomy', 'index']].to_csv('assembly/assembly2species.tsv', sep='\t', index=False, header=None)
 
 ## create a list for wget
-assembly['fna'] = assembly['ftp_path'] + '/' + assembly['ftp_path'].str.split('/').str.get(-1) + '_genomic.fna.gz'
+assembly['fna'] = assembly['ftp_path'] + assembly['ftp_path'].str.split('/').str.get(-2) + '_genomic.fna.gz'
 
 for kingdom in ['archaea', 'bacteria']:
     fna = assembly[assembly['group'] == kingdom]['fna'].to_list()
@@ -216,10 +216,10 @@ gtdb = pd.concat([
 gtdb['assembly'] = gtdb.accession.str.split('_', n=1).str.get(-1)
 
 ## some may no longer be available
-assembly = pd.merge(gtdb, ncbi[['assembly', 'ftp_path']], how='left', on='assembly')
-assembly[(assembly.ftp_path == 'na') | (assembly.ftp_path.isnull())].to_csv('assembly/deprecated.tsv', index=False, sep='\t')
+assembly = pd.merge(gtdb, ncbi[['assembly', 'ftp_path']], how='left', on='assembly').fillna('na')
+assembly[assembly.ftp_path == 'na'].to_csv('assembly/deprecated.tsv', index=False, sep='\t')
 
-assembly = assembly[((assembly.ftp_path != 'na') & (assembly.ftp_path.notnull())) | (assembly.gtdb_representative == 't')]
+assembly = assembly[(assembly.ftp_path != 'na') | (assembly.gtdb_representative == 't')]
 assembly['taxonomy'] = assembly['gtdb_taxonomy'].str.replace('[a-z]__', '', regex=True)
 assembly['group'] = assembly['taxonomy'].str.split(';').str.get(0).str.lower()
 
@@ -228,10 +228,11 @@ assembly['index'] = pd.Categorical(assembly['taxonomy'], ordered=False).codes + 
 assembly[['assembly', 'taxonomy', 'index']].to_csv('assembly/assembly2species.tsv', sep='\t', index=False, header=None)
 
 ## create a list for wget
-assembly['fna'] = assembly['ftp_path'] + '/' + assembly['ftp_path'].str.split('/').str.get(-1) + '_genomic.fna.gz'
+assembly['fna'] = assembly['ftp_path'] + assembly['ftp_path'].str.split('/').str.get(-2) + '_genomic.fna.gz'
 
 for kingdom in ['archaea', 'bacteria']:
-    fna = assembly[assembly['group'] == kingdom]['fna'].to_list()
+    fna = assembly[assembly['group'] == kingdom]['fna']
+    fna = fna[fna.notnull()].to_list()
     n = 8 if kingdom == 'archaea' else 256 # split into 8 or 256 chunks so that each contains same number of genomes
     chunks = [fna[i::n] for i in range(n)]
 
@@ -242,10 +243,10 @@ for kingdom in ['archaea', 'bacteria']:
 with open('assembly/info.tsv', 'w') as f:
     f.write(f'species\t{assembly.taxonomy.nunique()}\n')
     f.write(f'assemblies\t{assembly.assembly.nunique()}\n')
-    f.write(f'deprecated_reps\t{len(assembly[(assembly.ftp_path == 'na') | (assembly.ftp_path.isnull())])}\n')
+    f.write(f'deprecated_reps\t{len(assembly[assembly.ftp_path == 'na'])}\n')
 "
 
-## grab representative genomes if necessary
+## collect representative genomes if necessary
 wget -qN --show-progress https://data.ace.uq.edu.au/public/gtdb/data/releases/latest/genomic_files_reps/gtdb_genomes_reps.tar.gz
 tar -xvf gtdb_genomes_reps.tar.gz
 

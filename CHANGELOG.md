@@ -1,5 +1,13 @@
 # Changelog
-## 2025-04-16
+## April 2026
+### Changed
+- Update Kofam version to `2026-01-01`.
+- Update Marker gene set (`mg.json`) based on latest RefSeq re-evaluation.
+- Keep bash scripts for all.
+- Remove RefSeq database.
+
+
+## April 2025
 ### Changed
 - Update Kofam version (`2023-04-01` -> `2025-01-01`), remove threshold scale (`0.75`) for Kofam parsing.
 - Omit `env_nr`, use only `nr` for protein database construction.

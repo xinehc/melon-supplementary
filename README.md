@@ -1,5 +1,5 @@
 # Melon-supplementary
-Scripts for building the GTBD database of Melon.
+Scripts for building the GTBD database of [Melon](https://github.com/xinehc/melon).
 
 #### Install necessary packages
 ```bash
